@@ -14,8 +14,9 @@ Make sure you have the following installed:
 
 - [CMake](https://cmake.org/)
 - [Clang](https://clang.llvm.org/)
+- [Vulkan SDK](https://vulkan.lunarg.com/sdk/home) (**>=1.3.296.0**)
 - [just](https://github.com/casey/just) - a command runner
-- All dependencies required for building **SDL3**  
+- All dependencies required for building **SDL3**
   See the official guide: [SDL3 Linux build instructions](https://wiki.libsdl.org/SDL3/README-linux)
 
 ### Building and Running

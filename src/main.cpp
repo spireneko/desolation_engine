@@ -2,8 +2,16 @@
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
 
+#include <slang-com-helper.h>
+#include <slang-com-ptr.h>
+#include <slang.h>
+
 #include <d3d11.h>
 #include <dxgi1_2.h>
+
+#include <array>
+
+#include "shader.hpp"
 
 // Важно для DXVK Native: используем __uuidof_var вместо __uuidof для переменных
 #ifdef __uuidof_var
@@ -23,10 +31,29 @@ static IDXGISwapChain* g_pSwapChain = nullptr;
 static ID3D11RenderTargetView* g_pRenderTargetView = nullptr;
 static ID3D11Texture2D* g_pRenderTargetBuffer = nullptr;
 
+// После существующих глобальных объектов DirectX
+static ID3D11VertexShader* g_pVS = nullptr;
+static ID3D11PixelShader* g_pPS = nullptr;
+static ID3D11InputLayout* g_pInputLayout = nullptr;
+static ID3D11Buffer* g_pVertexBuffer = nullptr;
+
 // Размеры окна
-static int g_Width = 800;
-static int g_Height = 600;
+static int g_Width = 750;
+static int g_Height = 750;
 static SDL_Window* g_pWindow = nullptr;
+
+// Структура для хранения скомпилированных шейдеров
+struct CompiledShaders {
+	Slang::ComPtr<slang::IBlob> vertexShader;
+	Slang::ComPtr<slang::IBlob> pixelShader;
+	Slang::ComPtr<slang::IComponentType> linkedProgram;
+};
+
+// Структура вершины (должна совпадать с VSIn в шейдере)
+struct SimpleVertex {
+	float x, y, z, w;  // POSITION0
+	float r, g, b, a;  // COLOR0
+};
 
 // Очистка ресурсов DirectX
 void CleanupDirectX()
@@ -50,6 +77,22 @@ void CleanupDirectX()
 	if (g_pDevice) {
 		g_pDevice->Release();
 		g_pDevice = nullptr;
+	}
+	if (g_pVertexBuffer) {
+		g_pVertexBuffer->Release();
+		g_pVertexBuffer = nullptr;
+	}
+	if (g_pInputLayout) {
+		g_pInputLayout->Release();
+		g_pInputLayout = nullptr;
+	}
+	if (g_pPS) {
+		g_pPS->Release();
+		g_pPS = nullptr;
+	}
+	if (g_pVS) {
+		g_pVS->Release();
+		g_pVS = nullptr;
 	}
 }
 
@@ -135,7 +178,7 @@ bool InitializeDirectX()
 #endif
 	swapChainDesc.Windowed = TRUE;
 	swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
-	swapChainDesc.Flags = DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT;
+	swapChainDesc.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
 
 	result = pDXGIFactory->CreateSwapChain(g_pDevice, &swapChainDesc, &g_pSwapChain);
 	pDXGIFactory->Release();
@@ -185,12 +228,229 @@ void Render()
 		return;
 	}
 
-	// Очищаем экран (темно-синий)
-	const float clearColor[4] = {0.5f, 0.2f, 0.4f, 1.0f};
+	const float clearColor[4] = {0.1f, 0.1f, 0.15f, 1.0f};
 	g_pDeviceContext->ClearRenderTargetView(g_pRenderTargetView, clearColor);
 
-	// Показываем кадр
+	// ────────────── Здесь начинается отрисовка ──────────────
+
+	UINT stride = sizeof(SimpleVertex);
+	UINT offset = 0;
+	g_pDeviceContext->IASetVertexBuffers(0, 1, &g_pVertexBuffer, &stride, &offset);
+
+	g_pDeviceContext->IASetInputLayout(g_pInputLayout);
+	g_pDeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+	g_pDeviceContext->VSSetShader(g_pVS, nullptr, 0);
+	g_pDeviceContext->PSSetShader(g_pPS, nullptr, 0);
+
+	g_pDeviceContext->Draw(3, 0);  // 3 вершины → один треугольник
+
+	// ────────────────────────────────────────────────────────
+
 	g_pSwapChain->Present(1, 0);
+}
+
+void diagnoseIfNeeded(slang::IBlob* diagnosticsBlob)
+{
+	if (diagnosticsBlob) {
+		const char* diagnostics = (const char*)diagnosticsBlob->getBufferPointer();
+		if (diagnostics && strlen(diagnostics) > 0) {
+			SDL_Log("Slang diagnostics: %s", diagnostics);
+		}
+	}
+}
+
+bool SlangCompile(CompiledShaders& outShaders)
+{
+	Slang::ComPtr<slang::IGlobalSession> globalSession;
+	createGlobalSession(globalSession.writeRef());
+
+	slang::SessionDesc sessionDesc = {};
+
+	const char* searchPaths[] = {"shaders/"};
+	sessionDesc.searchPathCount = 1;
+	sessionDesc.searchPaths = searchPaths;
+
+	slang::TargetDesc targetDesc = {};
+	targetDesc.format = SLANG_DXBC;
+	targetDesc.profile = globalSession->findProfile("sm_5_0");
+
+	sessionDesc.targets = &targetDesc;
+	sessionDesc.targetCount = 1;
+
+	Slang::ComPtr<slang::ISession> session;
+	globalSession->createSession(sessionDesc, session.writeRef());
+
+	Slang::ComPtr<slang::IModule> slangModule;
+	{
+		Slang::ComPtr<slang::IBlob> diagnosticsBlob;
+		const char* moduleName = "MyVeryFirstShader";
+		slangModule = session->loadModule(moduleName, diagnosticsBlob.writeRef());
+		diagnoseIfNeeded(diagnosticsBlob);
+		if (!slangModule) {
+			SDL_Log("Failed to load module: %s", moduleName);
+			return false;
+		}
+	}
+
+	// Находим функции шейдеров в модуле
+	Slang::ComPtr<slang::IEntryPoint> vertexEntryPoint;
+	Slang::ComPtr<slang::IEntryPoint> pixelEntryPoint;
+
+	{
+		Slang::ComPtr<slang::IBlob> diagnosticsBlob;
+		slangModule->findEntryPointByName("vsMain", vertexEntryPoint.writeRef());
+		diagnoseIfNeeded(diagnosticsBlob);
+		if (!vertexEntryPoint) {
+			SDL_Log("Failed to find vertex entry point");
+			return false;
+		}
+	}
+
+	{
+		Slang::ComPtr<slang::IBlob> diagnosticsBlob;
+		slangModule->findEntryPointByName("psMain", pixelEntryPoint.writeRef());
+		diagnoseIfNeeded(diagnosticsBlob);
+		if (!pixelEntryPoint) {
+			SDL_Log("Failed to find fragment entry point");
+			return false;
+		}
+	}
+
+	std::array<slang::IComponentType*, 3> componentTypes = {slangModule, vertexEntryPoint, pixelEntryPoint};
+
+	Slang::ComPtr<slang::IComponentType> composedProgram;
+	{
+		Slang::ComPtr<slang::IBlob> diagnosticsBlob;
+		SlangResult result = session->createCompositeComponentType(
+			componentTypes.data(), componentTypes.size(), composedProgram.writeRef(), diagnosticsBlob.writeRef()
+		);
+		diagnoseIfNeeded(diagnosticsBlob);
+
+		if (!composedProgram) {
+			SDL_Log("Failed to create composite program");
+			return false;
+		}
+	}
+
+	Slang::ComPtr<slang::IComponentType> linkedProgram;
+	{
+		Slang::ComPtr<slang::IBlob> diagnosticsBlob;
+		SlangResult result = composedProgram->link(linkedProgram.writeRef(), diagnosticsBlob.writeRef());
+		diagnoseIfNeeded(diagnosticsBlob);
+		SLANG_RETURN_ON_FAIL(result);
+	}
+
+	// Получаем скомпилированный код шейдеров(DXBC)
+	// Индекс 0 = vertexEntryPoint, Индекс 1 = pixelEntryPoint (в порядке добавления)
+	{
+		Slang::ComPtr<slang::IBlob> diagnosticsBlob;
+
+		// Vertex Shader (entry point index 0)
+		SlangResult result = linkedProgram->getEntryPointCode(
+			0,	// entryPointIndex - vsMain был добавлен первым
+			0,	// targetIndex
+			outShaders.vertexShader.writeRef(),
+			diagnosticsBlob.writeRef()
+		);
+		diagnoseIfNeeded(diagnosticsBlob);
+		if (!composedProgram) {
+			SDL_Log("Failed to get vertex shader");
+			return false;
+		}
+
+		// Pixel Shader (entry point index 1)
+		result = linkedProgram->getEntryPointCode(
+			1,	// entryPointIndex - psMain был добавлен вторым
+			0,	// targetIndex
+			outShaders.pixelShader.writeRef(),
+			diagnosticsBlob.writeRef()
+		);
+		diagnoseIfNeeded(diagnosticsBlob);
+		if (!composedProgram) {
+			SDL_Log("Failed to get fragment shader");
+			return false;
+		}
+	}
+
+	// Сохраняем linkedProgram для возможного использования reflection
+	outShaders.linkedProgram = linkedProgram;
+
+	SDL_Log("Slang compilation successful!");
+	SDL_Log("Vertex shader size: %zu bytes", outShaders.vertexShader->getBufferSize());
+	SDL_Log("Pixel shader size: %zu bytes", outShaders.pixelShader->getBufferSize());
+
+	return true;
+}
+
+bool CreateShaderObjects(const CompiledShaders& shaders)
+{
+	HRESULT hr;
+
+	// Vertex Shader
+	hr = g_pDevice->CreateVertexShader(
+		shaders.vertexShader->getBufferPointer(), shaders.vertexShader->getBufferSize(), nullptr, &g_pVS
+	);
+	if (FAILED(hr)) {
+		SDL_Log("CreateVertexShader failed: 0x%08X", (unsigned)hr);
+		return false;
+	}
+
+	// Pixel Shader
+	hr = g_pDevice->CreatePixelShader(
+		shaders.pixelShader->getBufferPointer(), shaders.pixelShader->getBufferSize(), nullptr, &g_pPS
+	);
+	if (FAILED(hr)) {
+		SDL_Log("CreatePixelShader failed: 0x%08X", (unsigned)hr);
+		return false;
+	}
+
+	// Input Layout — описание, как читать вершины
+	std::array<D3D11_INPUT_ELEMENT_DESC, 2> layout{{
+		{"POSITION", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0},
+		{"COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0},
+	}};
+
+	hr = g_pDevice->CreateInputLayout(
+		layout.data(),
+		layout.size(),
+		shaders.vertexShader->getBufferPointer(),  // reflection берётся из VS байткода
+		shaders.vertexShader->getBufferSize(),
+		&g_pInputLayout
+	);
+	if (FAILED(hr)) {
+		SDL_Log("CreateInputLayout failed: 0x%08X", (unsigned)hr);
+		return false;
+	}
+
+	SDL_Log("Shaders and input layout created successfully");
+	return true;
+}
+
+bool CreateTriangle()
+{
+	SimpleVertex vertices[] = {
+		{-0.5f, -0.5f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f},	 // красный
+		{0.5f, -0.5f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, 1.0f},	 // зелёный
+		{0.0f, 0.5f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f},	 // синий
+	};
+
+	D3D11_BUFFER_DESC bd = {};
+	bd.Usage = D3D11_USAGE_DEFAULT;
+	bd.ByteWidth = sizeof(vertices);
+	bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+	bd.CPUAccessFlags = 0;
+
+	D3D11_SUBRESOURCE_DATA initData = {};
+	initData.pSysMem = vertices;
+
+	HRESULT hr = g_pDevice->CreateBuffer(&bd, &initData, &g_pVertexBuffer);
+	if (FAILED(hr)) {
+		SDL_Log("CreateBuffer failed: 0x%08X", (unsigned)hr);
+		return false;
+	}
+
+	return true;
 }
 
 // SDL Callback: Инициализация приложения
@@ -224,6 +484,20 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char* argv[])
 		SDL_Log("DirectX initialization failed!");
 		return SDL_APP_FAILURE;
 	}
+
+	// CompiledShaders shaders = {};
+	// if (!SlangCompile(shaders)) {
+	// 	SDL_Log("Slang compilation failed!");
+	// 	return SDL_APP_FAILURE;
+	// }
+
+	// if (!CreateShaderObjects(shaders)) {
+	// 	return SDL_APP_FAILURE;
+	// }
+
+	// if (!CreateTriangle()) {
+	// 	return SDL_APP_FAILURE;
+	// }
 
 	HRESULT hr = g_pSwapChain->Present(1, 0);
 	if (FAILED(hr)) {

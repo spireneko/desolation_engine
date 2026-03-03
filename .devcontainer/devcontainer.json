@@ -1,0 +1,56 @@
+// .devcontainer/devcontainer.json
+{
+    "name": "C++17 SDL3 Wayland Dev",
+    "build": {
+        "dockerfile": "Dockerfile",
+        "context": "..",
+        "args": {
+            "VULKAN_SDK_VERSION": "1.4.341.1"
+        }
+    },
+    // Важно для Podman: отключаем обновление UID, используем keep-id
+    "updateRemoteUserUID": false,
+    "remoteUser": "vscode",
+    "runArgs": [
+        "--userns=keep-id",
+        "--group-add=keep-groups",
+        "--network=host"
+    ],
+    "mounts": [
+        // Wayland (как было или улучшенный вариант)
+        "source=${localEnv:XDG_RUNTIME_DIR},target=${localEnv:XDG_RUNTIME_DIR},type=bind",
+        // X11 socket — очень важно для Xwayland и чистого X11
+        "source=/tmp/.X11-unix,target=/tmp/.X11-unix,type=bind",
+        "source=/dev/dri,target=/dev/dri,type=bind",
+        "source=/dev/kfd,target=/dev/kfd,type=bind,consistency=cached"
+    ],
+    "containerEnv": {
+        "XDG_RUNTIME_DIR": "${localEnv:XDG_RUNTIME_DIR}",
+        "WAYLAND_DISPLAY": "${localEnv:WAYLAND_DISPLAY}",
+        "DISPLAY": "${localEnv:DISPLAY}", // ← вот это ключевое добавление
+        "SDL_VIDEODRIVER": "wayland,x11", // пробовать wayland → fallback на x11
+        "QT_QPA_PLATFORM": "wayland;xcb", // аналогично для Qt
+        "GDK_BACKEND": "wayland,x11"
+    },
+    // Даем права на устройства через postCreateCommand
+    "postCreateCommand": "sudo chmod 666 /dev/dri/* 2>/dev/null || true",
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "ms-vscode.cpptools",
+                "ms-vscode.cmake-tools",
+                "twxs.cmake",
+                "llvm-vs-code-extensions.vscode-clangd",
+                "vadimcn.vscode-lldb",
+                "skellock.just"
+            ],
+            "settings": {
+                "cmake.configureOnOpen": true,
+                "cmake.generator": "Ninja",
+                "clangd.path": "/usr/bin/clangd",
+                "C_Cpp.intelliSenseEngine": "disabled",
+                "C_Cpp.autocomplete": "disabled"
+            }
+        }
+    }
+}
