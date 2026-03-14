@@ -39,6 +39,9 @@ add_compile_definitions(NOMINMAX)
 # Избавляемся от ворнингов, что мы не используем secure функции винды
 add_definitions(-D_CRT_SECURE_NO_WARNINGS)
 
+# Сборка под x64 процессоры
+set(CMAKE_GENERATOR_PLATFORM x64)
+
 # Основной экзешник
 add_executable(${PROJECT_NAME} src/main.cpp)
 
@@ -51,10 +54,10 @@ set(ORIGINAL_BUILD_TYPE ${CMAKE_BUILD_TYPE})
 set(CMAKE_BUILD_TYPE Release CACHE STRING "Forced Release for dependencies" FORCE)
 
 ## Скачиваем SDL3
-include(sdl)
+# include(sdl)
 
 ## Скачиваем slang
-include(slang)
+# include(slang)
 
 ## Скачиваем DXVK
 if(LINUX)
