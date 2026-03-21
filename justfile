@@ -16,29 +16,17 @@ executable := "desolation_engine"
 
 # build project (debug)
 build:
-    cmake -B {{ debug_target_dir }} \
-        -G Ninja \
-        -DCMAKE_C_COMPILER=clang \
-        -DCMAKE_CXX_COMPILER=clang++ \
-        -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-        -DCMAKE_BUILD_TYPE=Debug
-    cmake --build {{ debug_target_dir }}
+    cmake --preset=vcpkg-debug
+    cmake --build build/debug
 
-
+# build project (release)
 build-release:
-    cmake -B {{ release_target_dir }} \
-        -G Ninja \
-        -DCMAKE_C_COMPILER=clang \
-        -DCMAKE_CXX_COMPILER=clang++ \
-        -DCMAKE_BUILD_TYPE=Release
-    cmake --build {{ release_target_dir }}
-    cmake --install {{ release_target_dir }}
-
+    cmake --preset=vcpkg-release
+    cmake --build build/release
 
 # build and run project (debug)
 run: build
     ./{{ debug_target_dir }}/bin/{{ executable }}
-
 
 # build and run project (release)
 run-release: build-release

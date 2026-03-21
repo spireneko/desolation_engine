@@ -27,11 +27,12 @@ set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
 # Флаги для Debug сборки
-set(CMAKE_CXX_FLAGS_DEBUG "-Wall -Wextra -Wpedantic -g -O0")
+set(CMAKE_CXX_FLAGS_DEBUG "-Wall -Wextra -Wshadow -Wnon-virtual-dtor -Wpedantic -g -O0")
 # Флаги для Release сборки
-set(CMAKE_CXX_FLAGS_RELEASE "-Wall -Wextra -Wpedantic -O2 -DNDEBUG")
+set(CMAKE_CXX_FLAGS_RELEASE "-O2 -DNDEBUG")
 
 # Избавляемся от стрёмных макросов винды
 add_compile_definitions(NOMINMAX)
@@ -40,7 +41,7 @@ add_compile_definitions(NOMINMAX)
 add_definitions(-D_CRT_SECURE_NO_WARNINGS)
 
 # Сборка под x64 процессоры
-set(CMAKE_GENERATOR_PLATFORM x64)
+# set(CMAKE_GENERATOR_PLATFORM x64)
 
 # Основной экзешник
 add_executable(${PROJECT_NAME} src/main.cpp)
@@ -64,11 +65,26 @@ if(LINUX)
     include(dxvk)
 endif()
 
+include(directxtk)
+
 # Возвращаемся к оригинальному типу сборки
 set(CMAKE_BUILD_TYPE "${ORIGINAL_BUILD_TYPE}" CACHE STRING "" FORCE)
 
 ## Подключаем всё это добро
 target_link_libraries(${PROJECT_NAME} PRIVATE ${SDL3_TARGET} ${SLANG_TARGET})
+
+target_link_libraries(${PROJECT_NAME}
+    PRIVATE
+        d3d11
+        dxgi
+        d3dcompiler
+        dxguid
+)
+
+# DirectXTK
+target_link_libraries(${PROJECT_NAME} PRIVATE
+    ${DIRECTXTK_TARGET}
+)
 
 if(LINUX)
     target_link_libraries(${PROJECT_NAME} PRIVATE ${DXVK_TARGET})

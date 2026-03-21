@@ -1,4 +1,5 @@
 build/
+vcpkg_installed/
 
 # log files
 *.log

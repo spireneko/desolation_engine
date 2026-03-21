@@ -19,6 +19,12 @@ Make sure you have the following installed:
 - All dependencies required for building **SDL3**
   See the official guide: [SDL3 Linux build instructions](https://wiki.libsdl.org/SDL3/README-linux)
 
+Also run this to pull all vspkg dependencies:
+
+```bash
+vcpkg install --triplet x64-windows
+```
+
 ### Building and Running
 
 To build and run the project in **debug mode**:
