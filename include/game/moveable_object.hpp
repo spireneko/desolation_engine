@@ -11,9 +11,9 @@
 using namespace DirectX::SimpleMath;
 using namespace Microsoft::WRL;
 
-class ControlledObject : public GameComponent {
+class MoveableObject : public GameComponent {
    public:
-	virtual ~ControlledObject() = default;
+	virtual ~MoveableObject() = default;
 
 	virtual void Init(Gameable* game) override;
 	virtual void Update(float deltaTime) override;
@@ -58,7 +58,7 @@ class ControlledObject : public GameComponent {
 	void CreateRasterizerState(ID3D11Device* device);
 };
 
-void ControlledObject::Init(Gameable* game)
+void MoveableObject::Init(Gameable* game)
 {
 	m_game = game;
 	ID3D11Device* device = game->GetDevice();
@@ -73,14 +73,14 @@ void ControlledObject::Init(Gameable* game)
 	UpdateWorldMatrix();
 }
 
-void ControlledObject::Update(float deltaTime)
+void MoveableObject::Update(float deltaTime)
 {
 	UpdatePosition(deltaTime);
 	UpdateWorldMatrix();
 	UpdateConstantBuffer();
 }
 
-void ControlledObject::Draw()
+void MoveableObject::Draw()
 {
 	auto context = m_game->GetContext();
 
@@ -99,14 +99,14 @@ void ControlledObject::Draw()
 	context->DrawIndexed(m_indexCount, 0, 0);
 }
 
-void ControlledObject::UpdateWorldMatrix()
+void MoveableObject::UpdateWorldMatrix()
 {
 	m_worldMatrix = Matrix::CreateScale(m_scale) * Matrix::CreateTranslation(m_position);
 }
 
-void ControlledObject::Shutdown() {}
+void MoveableObject::Shutdown() {}
 
-void ControlledObject::CreateConstantBuffer(ID3D11Device* device)
+void MoveableObject::CreateConstantBuffer(ID3D11Device* device)
 {
 	D3D11_BUFFER_DESC cbDesc = {};
 	cbDesc.Usage = D3D11_USAGE_DEFAULT;
@@ -118,12 +118,12 @@ void ControlledObject::CreateConstantBuffer(ID3D11Device* device)
 	}
 }
 
-void ControlledObject::UpdateConstantBuffer()
+void MoveableObject::UpdateConstantBuffer()
 {
 	m_game->GetContext()->UpdateSubresource(m_constantBuffer.Get(), 0, nullptr, &m_worldMatrix, 0, 0);
 }
 
-void ControlledObject::CreateShadersAndLayout(ID3D11Device* device)
+void MoveableObject::CreateShadersAndLayout(ID3D11Device* device)
 {
 	ComPtr<ID3DBlob> vertexBC, errorVertexCode;
 	HRESULT hr = D3DCompileFromFile(
@@ -183,7 +183,7 @@ void ControlledObject::CreateShadersAndLayout(ID3D11Device* device)
 	}
 }
 
-void ControlledObject::CreateRasterizerState(ID3D11Device* device)
+void MoveableObject::CreateRasterizerState(ID3D11Device* device)
 {
 	CD3D11_RASTERIZER_DESC rastDesc = {};
 	rastDesc.CullMode = D3D11_CULL_NONE;

@@ -4,7 +4,7 @@
 
 enum Players { PLAYER1, PLAYER2 };
 
-class PlayerPad : public ControlledObject {
+class PlayerPad : public MoveableObject {
    public:
 	PlayerPad(Players player) : m_player(player), m_speed(2.0)	// скорость в единицах/сек
 	{
