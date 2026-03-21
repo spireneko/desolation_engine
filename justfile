@@ -17,12 +17,12 @@ executable := "desolation_engine"
 # build project (debug)
 build:
     cmake --preset=vcpkg-debug
-    cmake --build build/debug
+    cmake --build {{ debug_target_dir }}
 
 # build project (release)
 build-release:
     cmake --preset=vcpkg-release
-    cmake --build build/release
+    cmake --build {{ release_target_dir }}
 
 # build and run project (debug)
 run: build
