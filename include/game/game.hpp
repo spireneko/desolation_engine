@@ -5,6 +5,9 @@
 #include <stdexcept>
 #include <vector>
 
+#include "ball.hpp"
+#include "display.hpp"
+#include "divider.hpp"
 #include "game_component.hpp"
 #include "players.hpp"
 
@@ -25,10 +28,31 @@ class Game : public Gameable {
 
 	InputDevice& GetInput() { return InputDevice::Get(); }
 
+	int GetScorePlayer1() const { return m_player1Score; }
+
+	int GetScorePlayer2() const { return m_player2Score; }
+
+	void AddScorePlayer1() { m_player1Score++; }
+
+	void AddScorePlayer2() { m_player2Score++; }
+
+	void ResetScores()
+	{
+		m_player1Score = 0;
+		m_player2Score = 0;
+	}
+
+	const std::vector<std::unique_ptr<GameComponent>>& GetComponents() const { return m_components; }
+
+	void Restart() override;
+
    private:
 	void InitDirectX();
 	void CreateRenderTarget();
 	void Render();
+
+	int m_player1Score;
+	int m_player2Score;
 
 	DisplayWin32 m_display;
 	ComPtr<IDXGISwapChain> m_swapChain;
@@ -37,9 +61,14 @@ class Game : public Gameable {
 	ComPtr<ID3D11RenderTargetView> m_rtv;
 
 	std::vector<std::unique_ptr<GameComponent>> m_components;
+
+	std::chrono::steady_clock::time_point m_startTime;
+	std::chrono::steady_clock::time_point m_prevTime;
+	float m_totalTime = 0.0;
 };
 
-Game::Game(LPCSTR appName, int width, int height, HINSTANCE hInstance) : m_display(appName, width, height, hInstance)
+Game::Game(LPCSTR appName, int width, int height, HINSTANCE hInstance)
+	: m_display(appName, width, height, hInstance), m_player1Score(0), m_player2Score(0)
 {
 	InitDirectX();
 	CreateRenderTarget();
@@ -51,6 +80,19 @@ Game::Game(LPCSTR appName, int width, int height, HINSTANCE hInstance) : m_displ
 	auto player2 = std::make_unique<PlayerPad>(Players::PLAYER2);
 	player2->Init(this);
 	m_components.push_back(std::move(player2));
+
+	const int dividersAmount = 18;
+	for (int i = 0; i < dividersAmount; ++i) {
+		float yPos = (i + 1) * (2.0 / (float)(dividersAmount + 1)) - 1.0;
+
+		auto divider = std::make_unique<Divider>(Vector3(0.0, yPos, 0.0));
+		divider->Init(this);
+		m_components.push_back(std::move(divider));
+	}
+
+	auto ball = std::make_unique<Ball>(Vector3(0.0, 0.0, 0.0), Vector3(-1.0, 0.0, 0.0));
+	ball->Init(this);
+	m_components.push_back(std::move(ball));
 }
 
 Game::~Game()
@@ -66,9 +108,7 @@ Game::~Game()
 void Game::Run()
 {
 	MSG msg = {};
-	auto prevTime = std::chrono::steady_clock::now();
-	float totalTime = 0;
-	unsigned int frameCount = 0;
+	m_prevTime = std::chrono::steady_clock::now();
 
 	while (true) {
 		while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE)) {
@@ -79,20 +119,11 @@ void Game::Run()
 			break;
 		}
 
-		auto curTime = std::chrono::steady_clock::now();
-		float deltaTime = std::chrono::duration<float>(curTime - prevTime).count();
-		prevTime = curTime;
+		auto currTime = std::chrono::steady_clock::now();
+		float deltaTime = std::chrono::duration<float>(currTime - m_prevTime).count();
+		m_prevTime = currTime;
 
-		totalTime += deltaTime;
-		frameCount++;
-		if (totalTime >= 1.0f) {
-			float fps = frameCount / totalTime;
-			char text[256];
-			sprintf_s(text, "FPS: %.2f", fps);
-			SetWindowText(m_display.GetHWND(), text);
-			totalTime -= 1.0f;
-			frameCount = 0;
-		}
+		m_totalTime += deltaTime;
 
 		for (auto& comp : m_components) {
 			comp->Update(deltaTime);
@@ -173,4 +204,13 @@ void Game::Render()
 	for (auto& comp : m_components) {
 		comp->Draw();
 	}
+}
+
+void Game::Restart()
+{
+	for (auto& comp : m_components) {
+		comp->Restart();
+	}
+
+	std::cout << m_player1Score << ":" << m_player2Score << "\n";
 }

@@ -2,6 +2,7 @@
 
 #include <SimpleMath.h>
 #include <d3dcompiler.h>
+#include <wrl.h>
 #include <iostream>
 
 #include "colors.hpp"
@@ -20,16 +21,23 @@ class MoveableObject : public GameComponent {
 	virtual void Draw() override;
 	virtual void Shutdown() override;
 
+	Vector3 GetPosition() const { return m_position; }
+
+	Vector3 GetScale() const { return m_scale; }
+
+	Vector3 GetVelocity() const { return m_velocity; }
+
+	void SetPosition(const Vector3& pos) { m_position = pos; }
+
+	void SetVelocity(const Vector3& vel) { m_velocity = vel; }
+
    protected:
-	// Переопределяемые методы
 	virtual void CreateVertexBuffer(ID3D11Device* device) = 0;
 	virtual void CreateIndexBuffer(ID3D11Device* device) = 0;
 	virtual void UpdatePosition(float deltaTime) = 0;
 
-	// Можно переопределить, если нужно что-то особенное
 	virtual void UpdateWorldMatrix();
 
-	// Общие поля
 	Gameable* m_game = nullptr;
 
 	// Рендеринг
@@ -46,8 +54,7 @@ class MoveableObject : public GameComponent {
 	Vector3 m_position{0.0f, 0.0f, 0.0f};
 	Vector3 m_scale{1.0f, 1.0f, 1.0f};
 	Vector3 m_velocity{0.0f, 0.0f, 0.0f};
-
-	Vector4 m_color{WHITE};	 // по умолчанию белый
+	float m_speed;
 
 	UINT m_indexCount = 0;
 
