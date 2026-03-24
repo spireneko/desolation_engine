@@ -89,3 +89,11 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 if(LINUX)
     target_link_libraries(${PROJECT_NAME} PRIVATE ${DXVK_TARGET})
 endif()
+
+# Копирование папки shaders в папку с бинарником
+add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        "${CMAKE_CURRENT_SOURCE_DIR}/shaders"
+        "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/shaders"
+    COMMENT "Копирование папки shaders в ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}"
+)
