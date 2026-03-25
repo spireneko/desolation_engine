@@ -20,29 +20,29 @@ class Game : public Gameable {
 
 	void Run();
 
-	ID3D11Device* GetDevice() const { return m_device.Get(); }
+	ID3D11Device* GetDevice() const override { return m_device.Get(); }
 
-	ID3D11DeviceContext* GetContext() const { return m_context.Get(); }
+	ID3D11DeviceContext* GetContext() const override { return m_context.Get(); }
 
-	DisplayWin32* GetDisplay() { return &m_display; }
+	DisplayWin32* GetDisplay() override { return &m_display; }
 
-	InputDevice& GetInput() { return InputDevice::Get(); }
+	InputDevice& GetInput() override { return InputDevice::Get(); }
 
-	int GetScorePlayer1() const { return m_player1Score; }
+	int GetScorePlayer1() const override { return m_player1Score; }
 
-	int GetScorePlayer2() const { return m_player2Score; }
+	int GetScorePlayer2() const override { return m_player2Score; }
 
-	void AddScorePlayer1() { m_player1Score++; }
+	void AddScorePlayer1() override { m_player1Score++; }
 
-	void AddScorePlayer2() { m_player2Score++; }
+	void AddScorePlayer2() override { m_player2Score++; }
 
-	void ResetScores()
+	void ResetScores() override
 	{
 		m_player1Score = 0;
 		m_player2Score = 0;
 	}
 
-	const std::vector<std::unique_ptr<GameComponent>>& GetComponents() const { return m_components; }
+	const std::vector<std::unique_ptr<GameComponent>>& GetComponents() const override { return m_components; }
 
 	void Restart() override;
 
@@ -50,9 +50,6 @@ class Game : public Gameable {
 	void InitDirectX();
 	void CreateRenderTarget();
 	void Render();
-
-	int m_player1Score;
-	int m_player2Score;
 
 	DisplayWin32 m_display;
 	ComPtr<IDXGISwapChain> m_swapChain;
@@ -65,6 +62,9 @@ class Game : public Gameable {
 	std::chrono::steady_clock::time_point m_startTime;
 	std::chrono::steady_clock::time_point m_prevTime;
 	float m_totalTime = 0.0;
+
+	int m_player1Score;
+	int m_player2Score;
 };
 
 Game::Game(LPCSTR appName, int width, int height, HINSTANCE hInstance)
@@ -73,25 +73,21 @@ Game::Game(LPCSTR appName, int width, int height, HINSTANCE hInstance)
 	InitDirectX();
 	CreateRenderTarget();
 
-	auto player1 = std::make_unique<PlayerPad>(Players::PLAYER1);
-	player1->Init(this);
+	auto player1 = std::make_unique<PlayerPad>(this, Players::PLAYER1);
 	m_components.push_back(std::move(player1));
 
-	auto player2 = std::make_unique<PlayerPad>(Players::PLAYER2);
-	player2->Init(this);
+	auto player2 = std::make_unique<PlayerPad>(this, Players::PLAYER2);
 	m_components.push_back(std::move(player2));
 
 	const int dividersAmount = 18;
 	for (int i = 0; i < dividersAmount; ++i) {
 		float yPos = (i + 1) * (2.0 / (float)(dividersAmount + 1)) - 1.0;
 
-		auto divider = std::make_unique<Divider>(Vector3(0.0, yPos, 0.0));
-		divider->Init(this);
+		auto divider = std::make_unique<Divider>(this, Vector3(0.0, yPos, 0.0));
 		m_components.push_back(std::move(divider));
 	}
 
-	auto ball = std::make_unique<Ball>(Vector3(0.0, 0.0, 0.0), Vector3(-1.0, 0.0, 0.0));
-	ball->Init(this);
+	auto ball = std::make_unique<Ball>(this, Vector3(0.0, 0.0, 0.0), Vector3(-1.0, 0.0, 0.0));
 	m_components.push_back(std::move(ball));
 }
 

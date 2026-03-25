@@ -7,7 +7,7 @@ enum Players { PLAYER1, PLAYER2 };
 
 class PlayerPad : public MoveableObject {
    public:
-	PlayerPad(Players player) : m_player(player)
+	PlayerPad(Gameable* game, Players player) : MoveableObject(game), m_player(player)
 	{
 		m_scale = Vector3(0.015, 0.07, 1.0);
 		m_speed = 1.0;
@@ -17,6 +17,11 @@ class PlayerPad : public MoveableObject {
 		} else {
 			m_position.x = +0.92f;
 		}
+
+		ID3D11Device* device = m_game->GetDevice();
+
+		CreateVertexBuffer(device);
+		CreateIndexBuffer(device);
 	}
 
 	DirectX::BoundingBox GetBoundingBox() const;
@@ -105,6 +110,8 @@ void PlayerPad::CreateIndexBuffer(ID3D11Device* device)
 void PlayerPad::Restart()
 {
 	m_position.y = 0;
+	Vector3 f = GetRotation();
+	std::cout << f.x << " " << f.y << " " << f.z << "\n";
 }
 
 DirectX::BoundingBox PlayerPad::GetBoundingBox() const

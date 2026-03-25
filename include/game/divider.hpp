@@ -4,16 +4,22 @@
 
 class Divider : public MoveableObject {
    public:
-	Divider(Vector3 position)
+	Divider(Gameable* game, Vector3 position) : MoveableObject(game)
 	{
 		m_scale = Vector3(0.01, 0.03, 1.0);
 		m_velocity = Vector3::Zero;
 		m_speed = 0.0;
 		m_position = position;
+
+		ID3D11Device* device = m_game->GetDevice();
+
+		CreateVertexBuffer(device);
+		CreateIndexBuffer(device);
 	}
 
-	virtual void Restart() {};
-	virtual void UpdatePosition(float deltaTime) {};
+	void Restart() override {}
+
+	void UpdatePosition(float deltaTime) override { (void)deltaTime; };
 
    protected:
 	void CreateVertexBuffer(ID3D11Device* device) override;

@@ -7,7 +7,7 @@ const float START_SPEED = 0.7;
 
 class Ball : public MoveableObject {
    public:
-	Ball(Vector3 position, Vector3 velocity)
+	Ball(Gameable* game, Vector3 position, Vector3 velocity) : MoveableObject(game)
 	{
 		m_scale = Vector3(0.02, 0.02, 1.0);
 		m_position = position;
@@ -16,6 +16,11 @@ class Ball : public MoveableObject {
 		m_velocity.Normalize();
 
 		m_speed = START_SPEED;
+
+		ID3D11Device* device = m_game->GetDevice();
+
+		CreateVertexBuffer(device);
+		CreateIndexBuffer(device);
 	}
 
 	DirectX::BoundingBox GetBoundingBox() const;

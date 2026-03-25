@@ -1,5 +1,6 @@
 #pragma once
 
+#include <DirectXMath.h>
 #include <SimpleMath.h>
 #include <d3dcompiler.h>
 #include <wrl.h>
@@ -14,9 +15,19 @@ using namespace Microsoft::WRL;
 
 class MoveableObject : public GameComponent {
    public:
+	explicit MoveableObject(Gameable* game) : GameComponent(game), m_orientation(Quaternion::Identity)
+	{
+		ID3D11Device* device = m_game->GetDevice();
+
+		CreateConstantBuffer(device);
+		CreateShadersAndLayout(device);
+		CreateRasterizerState(device);
+
+		UpdateWorldMatrix();
+	}
+
 	virtual ~MoveableObject() = default;
 
-	virtual void Init(Gameable* game) override;
 	virtual void Update(float deltaTime) override;
 	virtual void Draw() override;
 	virtual void Shutdown() override;
@@ -31,14 +42,15 @@ class MoveableObject : public GameComponent {
 
 	void SetVelocity(const Vector3& vel) { m_velocity = vel; }
 
+	Vector3 GetRotation() const;
+	void SetRotation(const Vector3& anglesDegrees);
+
    protected:
 	virtual void CreateVertexBuffer(ID3D11Device* device) = 0;
 	virtual void CreateIndexBuffer(ID3D11Device* device) = 0;
 	virtual void UpdatePosition(float deltaTime) = 0;
 
 	virtual void UpdateWorldMatrix();
-
-	Gameable* m_game = nullptr;
 
 	// Рендеринг
 	ComPtr<ID3D11Buffer> m_vertexBuffer;
@@ -50,7 +62,6 @@ class MoveableObject : public GameComponent {
 	ComPtr<ID3D11RasterizerState> m_rasterizerState;
 
 	// Трансформация
-	Matrix m_worldMatrix;
 	Vector3 m_position{0.0f, 0.0f, 0.0f};
 	Vector3 m_scale{1.0f, 1.0f, 1.0f};
 	Vector3 m_velocity{0.0f, 0.0f, 0.0f};
@@ -63,22 +74,12 @@ class MoveableObject : public GameComponent {
 	void UpdateConstantBuffer();
 	void CreateShadersAndLayout(ID3D11Device* device);
 	void CreateRasterizerState(ID3D11Device* device);
+
+	// Матрица поворота
+	Quaternion m_orientation;
+
+	Matrix m_worldMatrix;
 };
-
-void MoveableObject::Init(Gameable* game)
-{
-	m_game = game;
-	ID3D11Device* device = game->GetDevice();
-
-	CreateVertexBuffer(device);
-	CreateIndexBuffer(device);
-	CreateConstantBuffer(device);
-	CreateShadersAndLayout(device);
-	CreateRasterizerState(device);
-
-	// Начальная матрица будет сформирована в первом Update
-	UpdateWorldMatrix();
-}
 
 void MoveableObject::Update(float deltaTime)
 {
@@ -106,9 +107,30 @@ void MoveableObject::Draw()
 	context->DrawIndexed(m_indexCount, 0, 0);
 }
 
+Vector3 MoveableObject::GetRotation() const
+{
+	// Из кватерниона получаем углы Эйлера (в радианах)
+	Vector3 euler = m_orientation.ToEuler();
+
+	// Возвращаем в градусах
+	return Vector3(
+		DirectX::XMConvertToDegrees(euler.x), DirectX::XMConvertToDegrees(euler.y), DirectX::XMConvertToDegrees(euler.z)
+	);
+}
+
+void MoveableObject::SetRotation(const Vector3& anglesDegrees)
+{
+	// Преобразуем градусы в радианы
+	float yaw = DirectX::XMConvertToRadians(anglesDegrees.x);
+	float pitch = DirectX::XMConvertToRadians(anglesDegrees.y);
+	float roll = DirectX::XMConvertToRadians(anglesDegrees.z);
+	m_orientation = Quaternion::CreateFromYawPitchRoll(yaw, pitch, roll);
+}
+
 void MoveableObject::UpdateWorldMatrix()
 {
-	m_worldMatrix = Matrix::CreateScale(m_scale) * Matrix::CreateTranslation(m_position);
+	m_worldMatrix = Matrix::CreateScale(m_scale) * Matrix::CreateFromQuaternion(m_orientation) *
+					Matrix::CreateTranslation(m_position);
 }
 
 void MoveableObject::Shutdown() {}
