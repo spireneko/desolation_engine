@@ -20,9 +20,7 @@ class MoveableObject : public GameComponent {
 		ID3D11Device* device = m_game->GetDevice();
 
 		CreateConstantBuffer(device);
-		CreateShadersAndLayout(device);
 		CreateRasterizerState(device);
-
 		UpdateWorldMatrix();
 	}
 
@@ -56,9 +54,6 @@ class MoveableObject : public GameComponent {
 	ComPtr<ID3D11Buffer> m_vertexBuffer;
 	ComPtr<ID3D11Buffer> m_indexBuffer;
 	ComPtr<ID3D11Buffer> m_constantBuffer;
-	ComPtr<ID3D11VertexShader> m_vertexShader;
-	ComPtr<ID3D11PixelShader> m_pixelShader;
-	ComPtr<ID3D11InputLayout> m_inputLayout;
 	ComPtr<ID3D11RasterizerState> m_rasterizerState;
 
 	// Трансформация
@@ -72,7 +67,6 @@ class MoveableObject : public GameComponent {
    private:
 	void CreateConstantBuffer(ID3D11Device* device);
 	void UpdateConstantBuffer();
-	void CreateShadersAndLayout(ID3D11Device* device);
 	void CreateRasterizerState(ID3D11Device* device);
 
 	// Матрица поворота
@@ -94,14 +88,16 @@ void MoveableObject::Draw()
 
 	context->VSSetConstantBuffers(0, 1, m_constantBuffer.GetAddressOf());
 
+	context->IASetInputLayout(m_game->GetInputLayout());
+	context->VSSetShader(m_game->GetVertexShader(), nullptr, 0);
+	context->PSSetShader(m_game->GetPixelShader(), nullptr, 0);
+
 	UINT stride = sizeof(Vertex);
 	UINT offset = 0;
+
 	context->IASetVertexBuffers(0, 1, m_vertexBuffer.GetAddressOf(), &stride, &offset);
 	context->IASetIndexBuffer(m_indexBuffer.Get(), DXGI_FORMAT_R32_UINT, 0);
-	context->IASetInputLayout(m_inputLayout.Get());
 	context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	context->VSSetShader(m_vertexShader.Get(), nullptr, 0);
-	context->PSSetShader(m_pixelShader.Get(), nullptr, 0);
 	context->RSSetState(m_rasterizerState.Get());
 
 	context->DrawIndexed(m_indexCount, 0, 0);
@@ -150,66 +146,6 @@ void MoveableObject::CreateConstantBuffer(ID3D11Device* device)
 void MoveableObject::UpdateConstantBuffer()
 {
 	m_game->GetContext()->UpdateSubresource(m_constantBuffer.Get(), 0, nullptr, &m_worldMatrix, 0, 0);
-}
-
-void MoveableObject::CreateShadersAndLayout(ID3D11Device* device)
-{
-	ComPtr<ID3DBlob> vertexBC, errorVertexCode;
-	HRESULT hr = D3DCompileFromFile(
-		L"./shaders/MyVeryFirstShader.hlsl",
-		nullptr,
-		nullptr,
-		"VSMain",
-		"vs_5_0",
-		D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION,
-		0,
-		&vertexBC,
-		&errorVertexCode
-	);
-	if (FAILED(hr)) {
-		if (errorVertexCode) {
-			std::cerr << (char*)errorVertexCode->GetBufferPointer() << std::endl;
-		}
-		throw std::runtime_error("Failed to compile vertex shader");
-	}
-	hr = device->CreateVertexShader(vertexBC->GetBufferPointer(), vertexBC->GetBufferSize(), nullptr, &m_vertexShader);
-	if (FAILED(hr)) {
-		throw std::runtime_error("Failed to create vertex shader");
-	}
-
-	ComPtr<ID3DBlob> pixelBC, errorPixelCode;
-	hr = D3DCompileFromFile(
-		L"./shaders/MyVeryFirstShader.hlsl",
-		nullptr,
-		nullptr,
-		"PSMain",
-		"ps_5_0",
-		D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION,
-		0,
-		&pixelBC,
-		&errorPixelCode
-	);
-	if (FAILED(hr)) {
-		if (errorPixelCode) {
-			std::cerr << (char*)errorPixelCode->GetBufferPointer() << std::endl;
-		}
-		throw std::runtime_error("Failed to compile pixel shader");
-	}
-	hr = device->CreatePixelShader(pixelBC->GetBufferPointer(), pixelBC->GetBufferSize(), nullptr, &m_pixelShader);
-	if (FAILED(hr)) {
-		throw std::runtime_error("Failed to create pixel shader");
-	}
-
-	D3D11_INPUT_ELEMENT_DESC inputElements[] = {
-		{"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, offsetof(Vertex, position), D3D11_INPUT_PER_VERTEX_DATA, 0},
-		{"COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, offsetof(Vertex, color), D3D11_INPUT_PER_VERTEX_DATA, 0}
-	};
-	hr = device->CreateInputLayout(
-		inputElements, 2, vertexBC->GetBufferPointer(), vertexBC->GetBufferSize(), &m_inputLayout
-	);
-	if (FAILED(hr)) {
-		throw std::runtime_error("Failed to create input layout");
-	}
 }
 
 void MoveableObject::CreateRasterizerState(ID3D11Device* device)

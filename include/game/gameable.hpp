@@ -15,6 +15,11 @@ class Gameable {
 	virtual InputDevice& GetInput() = 0;
 	virtual const std::vector<std::unique_ptr<GameComponent>>& GetComponents() const = 0;
 
+	// Shaders
+	virtual ID3D11VertexShader* GetVertexShader() const = 0;
+	virtual ID3D11PixelShader* GetPixelShader() const = 0;
+	virtual ID3D11InputLayout* GetInputLayout() const = 0;
+
 	virtual int GetScorePlayer1() const = 0;
 	virtual int GetScorePlayer2() const = 0;
 	virtual void AddScorePlayer1() = 0;

@@ -110,8 +110,6 @@ void PlayerPad::CreateIndexBuffer(ID3D11Device* device)
 void PlayerPad::Restart()
 {
 	m_position.y = 0;
-	Vector3 f = GetRotation();
-	std::cout << f.x << " " << f.y << " " << f.z << "\n";
 }
 
 DirectX::BoundingBox PlayerPad::GetBoundingBox() const

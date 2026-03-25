@@ -10,6 +10,7 @@
 #include "divider.hpp"
 #include "game_component.hpp"
 #include "players.hpp"
+#include "shader_manager.hpp"
 
 using namespace Microsoft::WRL;
 
@@ -27,6 +28,10 @@ class Game : public Gameable {
 	DisplayWin32* GetDisplay() override { return &m_display; }
 
 	InputDevice& GetInput() override { return InputDevice::Get(); }
+
+	ID3D11VertexShader* GetVertexShader() const override;
+	ID3D11PixelShader* GetPixelShader() const override;
+	ID3D11InputLayout* GetInputLayout() const override;
 
 	int GetScorePlayer1() const override { return m_player1Score; }
 
@@ -57,6 +62,8 @@ class Game : public Gameable {
 	ComPtr<ID3D11DeviceContext> m_context;
 	ComPtr<ID3D11RenderTargetView> m_rtv;
 
+	std::unique_ptr<ShaderManager> m_shaderManager;
+
 	std::vector<std::unique_ptr<GameComponent>> m_components;
 
 	std::chrono::steady_clock::time_point m_startTime;
@@ -72,6 +79,7 @@ Game::Game(LPCSTR appName, int width, int height, HINSTANCE hInstance)
 {
 	InitDirectX();
 	CreateRenderTarget();
+	m_shaderManager = std::make_unique<ShaderManager>(m_device.Get());
 
 	auto player1 = std::make_unique<PlayerPad>(this, Players::PLAYER1);
 	m_components.push_back(std::move(player1));
@@ -170,7 +178,7 @@ void Game::InitDirectX()
 void Game::CreateRenderTarget()
 {
 	ComPtr<ID3D11Texture2D> backBuffer;
-	HRESULT hr = m_swapChain->GetBuffer(0, IID_PPV_ARGS(&backBuffer));
+	HRESULT hr = m_swapChain->GetBuffer(0, IID_ID3D11Texture2D, &backBuffer);
 	if (FAILED(hr)) {
 		throw std::runtime_error("Failed to get back buffer");
 	}
@@ -209,4 +217,19 @@ void Game::Restart()
 	}
 
 	std::cout << m_player1Score << ":" << m_player2Score << "\n";
+}
+
+ID3D11VertexShader* Game::GetVertexShader() const
+{
+	return m_shaderManager->GetVertexShader();
+}
+
+ID3D11PixelShader* Game::GetPixelShader() const
+{
+	return m_shaderManager->GetPixelShader();
+}
+
+ID3D11InputLayout* Game::GetInputLayout() const
+{
+	return m_shaderManager->GetInputLayout();
 }
