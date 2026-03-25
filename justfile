@@ -1,5 +1,7 @@
 set windows-shell := ["powershell"]
 
+export VCPKG_DISABLE_METRICS := "1"
+
 alias b := build
 alias br := build-release
 alias r := run
