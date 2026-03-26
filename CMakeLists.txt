@@ -40,11 +40,13 @@ add_compile_definitions(NOMINMAX)
 # Избавляемся от ворнингов, что мы не используем secure функции винды
 add_definitions(-D_CRT_SECURE_NO_WARNINGS)
 
+file(GLOB_RECURSE sources CONFIGURE_DEPENDS "src/*.cpp")
+
 # Основной экзешник
-add_executable(${PROJECT_NAME} Engine/Main.cpp)
+add_executable(${PROJECT_NAME} ${sources})
 
 target_include_directories(${PROJECT_NAME} PRIVATE
-    Engine
+    src
 )
 
 # Зависимости собираем всегда в Release
