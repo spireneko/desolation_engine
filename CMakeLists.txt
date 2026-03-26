@@ -40,29 +40,28 @@ add_compile_definitions(NOMINMAX)
 # Избавляемся от ворнингов, что мы не используем secure функции винды
 add_definitions(-D_CRT_SECURE_NO_WARNINGS)
 
-# Сборка под x64 процессоры
-# set(CMAKE_GENERATOR_PLATFORM x64)
-
 # Основной экзешник
-add_executable(${PROJECT_NAME} src/main.cpp)
+add_executable(${PROJECT_NAME} Engine/Main.cpp)
 
 target_include_directories(${PROJECT_NAME} PRIVATE
-    include
+    Engine
 )
 
 # Зависимости собираем всегда в Release
 set(ORIGINAL_BUILD_TYPE ${CMAKE_BUILD_TYPE})
 set(CMAKE_BUILD_TYPE Release CACHE STRING "Forced Release for dependencies" FORCE)
 
-## Скачиваем SDL3
-# include(sdl)
+include(sdl)
+include(flecs)
 
 ## Скачиваем slang
 # include(slang)
 
-## Скачиваем DXVK
+## Скачиваем DXVK или подключаем dx11
 if(LINUX)
     include(dxvk)
+else()
+    include(directx)
 endif()
 
 include(directxtk)
@@ -71,24 +70,14 @@ include(directxtk)
 set(CMAKE_BUILD_TYPE "${ORIGINAL_BUILD_TYPE}" CACHE STRING "" FORCE)
 
 ## Подключаем всё это добро
-target_link_libraries(${PROJECT_NAME} PRIVATE ${SDL3_TARGET} ${SLANG_TARGET})
-
-target_link_libraries(${PROJECT_NAME}
-    PRIVATE
-        d3d11
-        dxgi
-        d3dcompiler
-        dxguid
-)
-
-# DirectXTK
 target_link_libraries(${PROJECT_NAME} PRIVATE
+    ${SDL3_TARGET}
+    ${DIRECTX_TARGET}
+    ${DXVK_TARGET}
     ${DIRECTXTK_TARGET}
+    ${FLECS_TARGET}
+    ${SLANG_TARGET}
 )
-
-if(LINUX)
-    target_link_libraries(${PROJECT_NAME} PRIVATE ${DXVK_TARGET})
-endif()
 
 # Копирование папки shaders в папку с бинарником
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
