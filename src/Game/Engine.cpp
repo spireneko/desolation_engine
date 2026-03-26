@@ -2,10 +2,8 @@
 
 #include <iostream>
 
+#include "../GameSet/Planets.hpp"
 #include "Colors.hpp"
-
-Engine::Engine() = default;
-Engine::~Engine() = default;
 
 bool Engine::Initialize(const char* title, int w, int h)
 {
@@ -32,7 +30,7 @@ bool Engine::Initialize(const char* title, int w, int h)
 
 	// Камера
 	camera = std::make_unique<Camera>();
-	camera->SetPosition(Vector3(0, -5, -5));
+	camera->SetPosition(Vector3(0, 0, -5));
 	camera->SetTarget(Vector3(0, 0, 0));
 	camera->SetPerspective(90.0f, static_cast<float>(width) / height, 0.1f, 100.0f);
 
@@ -43,12 +41,8 @@ bool Engine::Initialize(const char* title, int w, int h)
 		return false;
 	}
 
-	// Куб
-	cube = std::make_unique<Mesh>();
-	if (!cube->CreateCube(graphics->GetDevice())) {
-		std::cerr << "Failed to create cube mesh" << std::endl;
-		return false;
-	}
+	// Непосредственно игра, состоящая из набора объектов
+	gameComponents = CreatePlanetsGame(this);
 
 	running = true;
 	return true;
@@ -92,15 +86,15 @@ void Engine::ProcessEvents()
 
 void Engine::Update(float deltaTime)
 {
-	rotationY += deltaTime * 1.0f;	// 1 радиан в секунду
+	for (auto& component : gameComponents) {
+		component->Update(deltaTime);
+	}
 }
 
 void Engine::Render()
 {
-	graphics->BeginFrame(Colors::CornflowerBlue);
+	graphics->BeginFrame(Colors::DarkGray);
 
-	// Матрицы
-	Matrix world = Matrix::CreateRotationY(rotationY) * Matrix::CreateRotationX(0.3f);
 	Matrix view = camera->GetViewMatrix();
 	Matrix proj = camera->GetProjectionMatrix();
 
@@ -111,15 +105,15 @@ void Engine::Render()
 		Matrix projection;
 	} mats;
 
-	mats.world = world.Transpose();	 // HLSL ожидает column-major
 	mats.view = view.Transpose();
 	mats.projection = proj.Transpose();
 
-	shaders->Apply(graphics->GetContext());
-	shaders->UpdateConstants(graphics->GetContext(), &mats, sizeof(mats));
-
-	// Рисуем куб
-	cube->Draw(graphics->GetContext());
+	for (auto& component : gameComponents) {
+		mats.world = component->GetWorldMatrix().Transpose();
+		shaders->Apply(GetGraphicsContext());
+		shaders->UpdateConstants(GetGraphicsContext(), &mats, sizeof(mats));
+		component->Draw();
+	}
 
 	graphics->EndFrame();
 }
@@ -136,4 +130,14 @@ void Engine::Shutdown()
 		window = nullptr;
 	}
 	SDL_Quit();
+}
+
+ID3D11DeviceContext* Engine::GetGraphicsContext()
+{
+	return graphics->GetContext();
+}
+
+ID3D11Device* Engine::GetGraphicsDevice()
+{
+	return graphics->GetDevice();
 }

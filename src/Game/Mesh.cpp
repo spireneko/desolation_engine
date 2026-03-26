@@ -9,14 +9,14 @@ bool Mesh::CreateCube(ID3D11Device* device)
 {
 	// Вершины куба (8 точек)
 	vertices = {
-		{Vector3(-1.0f, -1.0f, -1.0f), Colors::Red},	// 0 красный
-		{Vector3(-1.0f, 1.0f, -1.0f), Colors::Green},	// 1 зеленый
-		{Vector3(1.0f, 1.0f, -1.0f), Colors::Blue},		// 2 синий
-		{Vector3(1.0f, -1.0f, -1.0f), Colors::Yellow},	// 3 желтый
-		{Vector3(-1.0f, -1.0f, 1.0f), Colors::Purple},	// 4 пурпурный
-		{Vector3(-1.0f, 1.0f, 1.0f), Colors::Cyan},		// 5 бирюзовый
-		{Vector3(1.0f, 1.0f, 1.0f), Colors::White},		// 6 белый
-		{Vector3(1.0f, -1.0f, 1.0f), Colors::Black},	// 7 черный
+		{Vector3(-0.5f, -0.5f, -0.5f), Colors::Red},	// 0 красный
+		{Vector3(-0.5f, 0.5f, -0.5f), Colors::Green},	// 1 зеленый
+		{Vector3(0.5f, 0.5f, -0.5f), Colors::Blue},		// 2 синий
+		{Vector3(0.5f, -0.5f, -0.5f), Colors::Yellow},	// 3 желтый
+		{Vector3(-0.5f, -0.5f, 0.5f), Colors::Purple},	// 4 пурпурный
+		{Vector3(-0.5f, 0.5f, 0.5f), Colors::Cyan},		// 5 бирюзовый
+		{Vector3(0.5f, 0.5f, 0.5f), Colors::White},		// 6 белый
+		{Vector3(0.5f, -0.5f, 0.5f), Colors::Black},	// 7 черный
 	};
 
 	// Индексы (36 для 12 треугольников)
