@@ -7,7 +7,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 {
 	Engine engine;
 
-	if (!engine.Initialize("SDL3 + DirectX11 + SimpleMath Cube", 1280, 720)) {
+	if (!engine.Initialize("Desolation Engine", 1280, 720)) {
 		std::cerr << "Engine initialization failed!" << std::endl;
 		return -1;
 	}

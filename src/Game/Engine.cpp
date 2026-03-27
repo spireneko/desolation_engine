@@ -1,5 +1,6 @@
 #include "Engine.hpp"
 
+#include <deque>
 #include <iostream>
 
 #include "../GameSet/Planets.hpp"
@@ -87,7 +88,40 @@ void Engine::ProcessEvents()
 void Engine::Update(float deltaTime)
 {
 	for (auto& component : gameComponents) {
-		component->Update(deltaTime);
+		if (!component->GetParent()) {	// Обновляем только корневые компоненты
+			component->Update(deltaTime);
+		}
+	}
+}
+
+void Engine::DrawComponent(const std::shared_ptr<GameComponent>& component, const Matrix& view, const Matrix& proj)
+{
+	std::deque<std::shared_ptr<GameComponent>> queue;
+	queue.push_back(component);
+
+	struct Matrices {
+		Matrix world;
+		Matrix view;
+		Matrix projection;
+	} mats;
+
+	mats.view = view.Transpose();
+	mats.projection = proj.Transpose();
+
+	while (!queue.empty()) {
+		auto current = queue.front();
+		queue.pop_front();
+
+		Matrix world = current->GetWorldMatrix();
+		mats.world = world.Transpose();
+
+		shaders->Apply(GetGraphicsContext());
+		shaders->UpdateConstants(GetGraphicsContext(), &mats, sizeof(mats));
+
+		current->Draw();
+		for (auto& child : current->GetChildren()) {
+			queue.push_back(child);
+		}
 	}
 }
 
@@ -98,21 +132,10 @@ void Engine::Render()
 	Matrix view = camera->GetViewMatrix();
 	Matrix proj = camera->GetProjectionMatrix();
 
-	// Обновление констант
-	struct Matrices {
-		Matrix world;
-		Matrix view;
-		Matrix projection;
-	} mats;
-
-	mats.view = view.Transpose();
-	mats.projection = proj.Transpose();
-
 	for (auto& component : gameComponents) {
-		mats.world = component->GetWorldMatrix().Transpose();
-		shaders->Apply(GetGraphicsContext());
-		shaders->UpdateConstants(GetGraphicsContext(), &mats, sizeof(mats));
-		component->Draw();
+		if (!component->GetParent()) {
+			DrawComponent(component, view, proj);
+		}
 	}
 
 	graphics->EndFrame();

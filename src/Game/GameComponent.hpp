@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <vector>
 
 #include "GameContext.hpp"
 #include "Mesh.hpp"
@@ -18,6 +19,11 @@ class GameComponent {
 	void SetVelocity(const Vector3& vel);
 	void SetAngularVelocity(const Vector3& angVel);
 
+	void AddChild(std::shared_ptr<GameComponent> child);
+	void RemoveChild(GameComponent* child);
+	GameComponent* GetParent() const;
+	const std::vector<std::shared_ptr<GameComponent>>& GetChildren() const;
+
 	Matrix GetWorldMatrix() const;
 
 	virtual void Draw();
@@ -30,4 +36,7 @@ class GameComponent {
 	Vector3 velocity = Vector3(0, 0, 0);
 	Quaternion rotation = Quaternion::Identity;
 	Vector3 angularVelocity = Vector3(0, 0, 0);
+
+	GameComponent* parent = nullptr;
+	std::vector<std::shared_ptr<GameComponent>> children;
 };

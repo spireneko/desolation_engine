@@ -6,4 +6,4 @@
 #include "../Game/Cube.hpp"
 #include "../Game/GameComponent.hpp"
 
-std::vector<std::unique_ptr<GameComponent>> CreatePlanetsGame(GameContext* ctx);
+std::vector<std::shared_ptr<GameComponent>> CreatePlanetsGame(GameContext* ctx);

@@ -27,11 +27,12 @@ class Engine : public GameContext {
 	void ProcessEvents();
 	void Update(float deltaTime);
 	void Render();
+	void DrawComponent(const std::shared_ptr<GameComponent>& component, const Matrix& view, const Matrix& proj);
 
 	SDL_Window* window = nullptr;
 	bool running = false;
 
-	std::vector<std::unique_ptr<GameComponent>> gameComponents;
+	std::vector<std::shared_ptr<GameComponent>> gameComponents;
 
 	std::unique_ptr<Graphics> graphics;
 	std::unique_ptr<Camera> camera;
