@@ -4,10 +4,11 @@
 #include <memory>
 #include <vector>
 
-#include "Camera.hpp"
+#include "CameraComponent.hpp"
 #include "GameComponent.hpp"
 #include "GameContext.hpp"
 #include "Graphics.hpp"
+#include "InputManager.hpp"
 #include "Mesh.hpp"
 #include "ShaderManager.hpp"
 
@@ -22,10 +23,12 @@ class Engine : public GameContext {
 
 	ID3D11DeviceContext* GetGraphicsContext() override;
 	ID3D11Device* GetGraphicsDevice() override;
+	InputManager* GetInputManager() override;
 
    private:
 	void ProcessEvents();
 	void Update(float deltaTime);
+	void UpdateComponent(const std::shared_ptr<GameComponent>& component, float deltaTime);
 	void Render();
 	void DrawComponent(const std::shared_ptr<GameComponent>& component, const Matrix& view, const Matrix& proj);
 
@@ -35,9 +38,10 @@ class Engine : public GameContext {
 	std::vector<std::shared_ptr<GameComponent>> gameComponents;
 
 	std::unique_ptr<Graphics> graphics;
-	std::unique_ptr<Camera> camera;
+	std::shared_ptr<CameraComponent> camera;
 	std::unique_ptr<Mesh> cube;
 	std::unique_ptr<ShaderManager> shaders;
+	std::unique_ptr<InputManager> inputManager;
 
 	int width, height;
 };

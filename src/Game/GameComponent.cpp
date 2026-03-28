@@ -78,8 +78,4 @@ void GameComponent::Update(float deltaTime)
 	Vector3 angularDelta = angularVelocity * angularSpeed * deltaTime;
 	Quaternion deltaRot = Quaternion::CreateFromYawPitchRoll(angularDelta.y, angularDelta.x, angularDelta.z);
 	rotation = Quaternion::Concatenate(rotation, deltaRot);
-
-	for (auto& child : children) {
-		child->Update(deltaTime);
-	}
 }

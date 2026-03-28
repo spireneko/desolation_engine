@@ -22,6 +22,9 @@ bool Engine::Initialize(const char* title, int w, int h)
 		return false;
 	}
 
+	// Включаем relative mouse mode для вращения камеры
+	SDL_SetWindowRelativeMouseMode(window, true);
+
 	// Инициализация Graphics
 	graphics = std::make_unique<Graphics>();
 	if (!graphics->Initialize(window, width, height)) {
@@ -29,17 +32,19 @@ bool Engine::Initialize(const char* title, int w, int h)
 		return false;
 	}
 
-	// Камера
-	camera = std::make_unique<Camera>();
-	camera->SetPosition(Vector3(0, 0, -5));
-	camera->SetTarget(Vector3(0, 0, 0));
-	camera->SetPerspective(90.0f, static_cast<float>(width) / height, 0.1f, 100.0f);
-
 	// Шейдеры
 	shaders = std::make_unique<ShaderManager>(this);
 
+	// Input Manager
+	inputManager = std::make_unique<InputManager>();
+
 	// Непосредственно игра, состоящая из набора объектов
 	gameComponents = CreatePlanetsGame(this);
+
+	camera = std::make_shared<CameraComponent>(this);
+	camera->SetAspectRatio(static_cast<float>(width) / height);
+
+	gameComponents.push_back(camera);
 
 	running = true;
 	return true;
@@ -64,28 +69,63 @@ void Engine::ProcessEvents()
 {
 	SDL_Event e;
 	while (SDL_PollEvent(&e)) {
+		inputManager->ProcessEvent(e);
+
 		switch (e.type) {
-			case SDL_EVENT_QUIT:
+			case SDL_EVENT_QUIT: {
 				running = false;
 				break;
-			case SDL_EVENT_WINDOW_RESIZED:
+			}
+			case SDL_EVENT_WINDOW_RESIZED: {
 				graphics->Resize(e.window.data1, e.window.data2);
-				camera->SetPerspective(60.0f, static_cast<float>(e.window.data1) / e.window.data2, 0.1f, 100.0f);
+				camera->SetAspectRatio(static_cast<float>(e.window.data1) / e.window.data2);
 				break;
-			case SDL_EVENT_KEY_DOWN:
+			}
+			case SDL_EVENT_KEY_DOWN: {
 				if (e.key.key == SDLK_ESCAPE) {
 					running = false;
 				}
 				break;
+				// case SDL_EVENT_MOUSE_BUTTON_DOWN:
+				// 	if (e.button.button == SDL_BUTTON_RIGHT) {
+				// 		SDL_SetRelativeMouseMode(SDL_TRUE);
+				// 	}
+				// 	break;
+				// case SDL_EVENT_MOUSE_BUTTON_UP:
+				// 	if (e.button.button == SDL_BUTTON_RIGHT) {
+				// 		SDL_SetRelativeMouseMode(SDL_FALSE);
+				// 	}
+				// 	break;
+			}
 		}
 	}
 }
 
 void Engine::Update(float deltaTime)
 {
+	inputManager->Update();
+
 	for (auto& component : gameComponents) {
 		if (!component->GetParent()) {	// Обновляем только корневые компоненты
-			component->Update(deltaTime);
+			UpdateComponent(component, deltaTime);
+		}
+	}
+
+	inputManager->EndFrame();
+}
+
+void Engine::UpdateComponent(const std::shared_ptr<GameComponent>& component, float deltaTime)
+{
+	std::deque<std::shared_ptr<GameComponent>> queue;
+	queue.push_back(component);
+
+	while (!queue.empty()) {
+		auto current = queue.front();
+		queue.pop_front();
+
+		current->Update(deltaTime);
+		for (auto& child : current->GetChildren()) {
+			queue.push_back(child);
 		}
 	}
 }
@@ -159,4 +199,9 @@ ID3D11DeviceContext* Engine::GetGraphicsContext()
 ID3D11Device* Engine::GetGraphicsDevice()
 {
 	return graphics->GetDevice();
+}
+
+InputManager* Engine::GetInputManager()
+{
+	return inputManager.get();
 }
