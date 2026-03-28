@@ -5,28 +5,20 @@ cbuffer ConstantBuffer : register(b0) {
 };
 
 struct VS_INPUT {
-    float3 position : POSITION;
+    float4 pos : POSITION;
     float4 color : COLOR;
-    float3 normal : NORMAL;
 };
 
 struct PS_INPUT {
-    float4 position : SV_POSITION;
+    float4 pos : SV_POSITION;
     float4 color : COLOR;
-    float3 normal : NORMAL;
-    float3 worldPos : TEXCOORD0;
 };
 
 PS_INPUT main(VS_INPUT input) {
     PS_INPUT output;
-
-    float4 worldPos = mul(float4(input.position, 1.0f), world);
-    output.worldPos = worldPos.xyz;
-    output.position = mul(worldPos, view);
-    output.position = mul(output.position, projection);
-
+    output.pos = mul(input.pos, world);
+    output.pos = mul(output.pos, view);
+    output.pos = mul(output.pos, projection);
     output.color = input.color;
-    output.normal = mul(input.normal, (float3x3)world);
-
     return output;
 }

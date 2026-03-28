@@ -4,28 +4,66 @@ std::vector<std::shared_ptr<GameComponent>> CreatePlanetsGame(GameContext* ctx)
 {
 	std::vector<std::shared_ptr<GameComponent>> components;
 
-	auto cube = std::make_shared<Cube>(ctx);
-	cube->angularSpeed = 1.0;
-	cube->SetAngularVelocity(Vector3(0, 1, 0));
+	auto solarSystem = std::make_shared<GameComponent>(ctx);
+	components.push_back(solarSystem);
 
-	// Дочерний куб, привязанный к позиционированию родителя
-	auto childCube = std::make_shared<Cube>(ctx);
-	childCube->angularSpeed = 2.0;
-	childCube->SetAngularVelocity(Vector3(0, 0, 1));
-	childCube->position = Vector3(2, 0, 0);	 // относительно родителя
-	childCube->scale = Vector3(0.5f, 0.5f, 0.5f);
-	cube->AddChild(childCube);
+	auto sun = std::make_shared<GameComponent>(ctx);
+	components.push_back(sun);
+	sun->scale = Vector3(3, 3, 3);
+	sun->SetAngularVelocity(Vector3(0, 1, 0));
+	sun->angularSpeed = 0.3;
+	auto cubeMesh = std::make_unique<Mesh>();
+	cubeMesh->CreateCube(ctx);
+	sun->SetMesh(std::move(cubeMesh));
+	solarSystem->AddChild(sun);
 
-	components.push_back(cube);
+	auto sunOrbit1 = std::make_shared<GameComponent>(ctx);
+	components.push_back(sunOrbit1);
+	sunOrbit1->SetAngularVelocity(Vector3(0, 1, 0));
+	sunOrbit1->angularSpeed = 1.0;
+	solarSystem->AddChild(sunOrbit1);
 
-	auto cube2 = std::make_shared<Cube>(ctx);
-	cube2->angularSpeed = 2.0;
-	cube2->SetAngularVelocity(Vector3(0, 0, 1));
-	cube2->position = Vector3(-4, 0, 0);
-	cube2->scale = Vector3(1.5, 0.5, 1.5);
-	components.push_back(cube2);
+	auto sunOrbit2 = std::make_shared<GameComponent>(ctx);
+	components.push_back(sunOrbit2);
+	sunOrbit2->SetAngularVelocity(Vector3(0, 1.0, 1.5));
+	sunOrbit2->angularSpeed = 5.0;
+	solarSystem->AddChild(sunOrbit2);
 
-	// cube->AddChild(cube2);
+	auto sunOrbit3 = std::make_shared<GameComponent>(ctx);
+	components.push_back(sunOrbit3);
+	sunOrbit3->SetAngularVelocity(Vector3(1, 1, 0));
+	sunOrbit3->angularSpeed = 0.1;
+	solarSystem->AddChild(sunOrbit3);
+
+	auto planet1 = std::make_shared<GameComponent>(ctx);
+	components.push_back(planet1);
+	planet1->position = Vector3(5, 0, 0);
+	planet1->SetAngularVelocity(Vector3(0.3, 1, 0));
+	planet1->angularSpeed = 0.7;
+	auto cubeMesh1 = std::make_unique<Mesh>();
+	cubeMesh1->CreateCube(ctx);
+	planet1->SetMesh(std::move(cubeMesh1));
+	sunOrbit1->AddChild(planet1);
+
+	auto planet2 = std::make_shared<GameComponent>(ctx);
+	components.push_back(planet2);
+	planet2->position = Vector3(-10, 0, 3);
+	planet2->SetAngularVelocity(Vector3(0, 1, 0));
+	planet2->angularSpeed = 0.4;
+	auto cubeMesh2 = std::make_unique<Mesh>();
+	cubeMesh2->CreateCube(ctx);
+	planet2->SetMesh(std::move(cubeMesh2));
+	sunOrbit1->AddChild(planet2);
+
+	auto planet3 = std::make_shared<GameComponent>(ctx);
+	components.push_back(planet3);
+	planet3->position = Vector3(0, 14, 21);
+	planet3->SetAngularVelocity(Vector3(1, 1, 1));
+	planet3->angularSpeed = 2;
+	auto cubeMesh3 = std::make_unique<Mesh>();
+	cubeMesh3->CreateCube(ctx);
+	planet3->SetMesh(std::move(cubeMesh3));
+	sunOrbit2->AddChild(planet3);
 
 	return components;
 }

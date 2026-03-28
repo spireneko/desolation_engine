@@ -1,10 +1,16 @@
 #pragma once
 
+#include <SimpleMath.h>
 #include <d3d11.h>
+#include <d3dcompiler.h>
 #include <wrl/client.h>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
+#include "GameContext.hpp"
+
+using namespace DirectX::SimpleMath;
 using Microsoft::WRL::ComPtr;
 
 class ShaderManager {
@@ -14,13 +20,15 @@ class ShaderManager {
 		size_t size;
 	};
 
-	bool Initialize(ID3D11Device* device);
+	ShaderManager(GameContext* ctx);
 
-	void Apply(ID3D11DeviceContext* context);
-	void UpdateConstants(ID3D11DeviceContext* context, const void* data, size_t size);
+	void Apply();
+	void UpdateConstants(const void* data);
 
    private:
 	bool CompileShaders();
+
+	GameContext* gameContext = nullptr;
 
 	ComPtr<ID3D11VertexShader> vertexShader;
 	ComPtr<ID3D11PixelShader> pixelShader;

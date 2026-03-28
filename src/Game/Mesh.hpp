@@ -5,6 +5,9 @@
 #include <wrl/client.h>
 #include <vector>
 
+#include "Colors.hpp"
+#include "GameContext.hpp"
+
 using namespace DirectX::SimpleMath;
 
 using Microsoft::WRL::ComPtr;
@@ -19,8 +22,8 @@ class Mesh {
 	Mesh();
 	~Mesh();
 
-	bool CreateCube(ID3D11Device* device);
-	void Draw(ID3D11DeviceContext* context);
+	bool CreateCube(GameContext* context);
+	void Draw(GameContext* context);
 
 	size_t GetIndexCount() const { return indices.size(); }
 

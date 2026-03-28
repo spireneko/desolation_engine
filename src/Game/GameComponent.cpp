@@ -44,6 +44,16 @@ const std::vector<std::shared_ptr<GameComponent>>& GameComponent::GetChildren() 
 	return children;
 }
 
+void GameComponent::SetMesh(std::unique_ptr<Mesh>&& m)
+{
+	mesh = std::move(m);
+}
+
+Mesh* GameComponent::GetMesh() const
+{
+	return mesh.get();
+}
+
 Matrix GameComponent::GetWorldMatrix() const
 {
 	Matrix localMatrix =
@@ -57,7 +67,7 @@ Matrix GameComponent::GetWorldMatrix() const
 void GameComponent::Draw()
 {
 	if (mesh) {
-		mesh->Draw(gameContext->GetGraphicsContext());
+		mesh->Draw(gameContext);
 	}
 }
 

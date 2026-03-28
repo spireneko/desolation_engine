@@ -36,11 +36,7 @@ bool Engine::Initialize(const char* title, int w, int h)
 	camera->SetPerspective(90.0f, static_cast<float>(width) / height, 0.1f, 100.0f);
 
 	// Шейдеры
-	shaders = std::make_unique<ShaderManager>();
-	if (!shaders->Initialize(graphics->GetDevice())) {
-		std::cerr << "Failed to initialize shaders" << std::endl;
-		return false;
-	}
+	shaders = std::make_unique<ShaderManager>(this);
 
 	// Непосредственно игра, состоящая из набора объектов
 	gameComponents = CreatePlanetsGame(this);
@@ -115,8 +111,8 @@ void Engine::DrawComponent(const std::shared_ptr<GameComponent>& component, cons
 		Matrix world = current->GetWorldMatrix();
 		mats.world = world.Transpose();
 
-		shaders->Apply(GetGraphicsContext());
-		shaders->UpdateConstants(GetGraphicsContext(), &mats, sizeof(mats));
+		shaders->Apply();
+		shaders->UpdateConstants(&mats);
 
 		current->Draw();
 		for (auto& child : current->GetChildren()) {

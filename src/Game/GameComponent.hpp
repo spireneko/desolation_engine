@@ -24,6 +24,9 @@ class GameComponent {
 	GameComponent* GetParent() const;
 	const std::vector<std::shared_ptr<GameComponent>>& GetChildren() const;
 
+	void SetMesh(std::unique_ptr<Mesh>&& m);
+	Mesh* GetMesh() const;
+
 	Matrix GetWorldMatrix() const;
 
 	virtual void Draw();

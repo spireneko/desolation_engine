@@ -1,12 +1,12 @@
 #include "Mesh.hpp"
 
-#include "Colors.hpp"
-
 Mesh::Mesh() = default;
 Mesh::~Mesh() = default;
 
-bool Mesh::CreateCube(ID3D11Device* device)
+bool Mesh::CreateCube(GameContext* context)
 {
+	auto device = context->GetGraphicsDevice();
+
 	// Вершины куба (8 точек)
 	vertices = {
 		{Vector3(-0.5f, -0.5f, -0.5f), Colors::Red},	// 0 красный
@@ -91,12 +91,14 @@ bool Mesh::CreateCube(ID3D11Device* device)
 	return true;
 }
 
-void Mesh::Draw(ID3D11DeviceContext* context)
+void Mesh::Draw(GameContext* ctx)
 {
+	auto device = ctx->GetGraphicsContext();
+
 	UINT stride = sizeof(Vertex);
 	UINT offset = 0;
-	context->IASetVertexBuffers(0, 1, vertexBuffer.GetAddressOf(), &stride, &offset);
-	context->IASetIndexBuffer(indexBuffer.Get(), DXGI_FORMAT_R16_UINT, 0);
-	context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	context->DrawIndexed(static_cast<UINT>(indices.size()), 0, 0);
+	device->IASetVertexBuffers(0, 1, vertexBuffer.GetAddressOf(), &stride, &offset);
+	device->IASetIndexBuffer(indexBuffer.Get(), DXGI_FORMAT_R16_UINT, 0);
+	device->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	device->DrawIndexed(static_cast<UINT>(indices.size()), 0, 0);
 }
