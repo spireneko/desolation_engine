@@ -1,11 +1,5 @@
 #include "Engine.hpp"
 
-#include <deque>
-#include <iostream>
-
-#include "../GameSet/Planets.hpp"
-#include "Colors.hpp"
-
 bool Engine::Initialize(const char* title, int w, int h)
 {
 	width = w;
@@ -41,10 +35,18 @@ bool Engine::Initialize(const char* title, int w, int h)
 	// Непосредственно игра, состоящая из набора объектов
 	gameComponents = CreatePlanetsGame(this);
 
-	camera = std::make_shared<CameraComponent>(this);
+	camera = std::make_shared<FPSCamera>(this);
 	camera->SetAspectRatio(static_cast<float>(width) / height);
+	camera->position = Vector3(0, 0, -7);
+
+	fixedCamera = std::make_shared<OrbitalCamera>(this, 20, Vector3(0, 0, 0));
+	fixedCamera->SetAspectRatio(static_cast<float>(width) / height);
+	fixedCamera->isActive = false;
+
+	activeCamera = camera;
 
 	gameComponents.push_back(camera);
+	gameComponents.push_back(fixedCamera);
 
 	running = true;
 	return true;
@@ -56,7 +58,7 @@ void Engine::Run()
 
 	while (running) {
 		Uint64 currentTime = SDL_GetTicks();
-		float deltaTime = (currentTime - lastTime) / 1000.0f;
+		float deltaTime = (currentTime - lastTime) / 1000.0;
 		lastTime = currentTime;
 
 		ProcessEvents();
@@ -79,11 +81,23 @@ void Engine::ProcessEvents()
 			case SDL_EVENT_WINDOW_RESIZED: {
 				graphics->Resize(e.window.data1, e.window.data2);
 				camera->SetAspectRatio(static_cast<float>(e.window.data1) / e.window.data2);
+				fixedCamera->SetAspectRatio(static_cast<float>(e.window.data1) / e.window.data2);
 				break;
 			}
 			case SDL_EVENT_KEY_DOWN: {
 				if (e.key.key == SDLK_ESCAPE) {
 					running = false;
+				}
+				if (e.key.key == SDLK_C) {
+					if (activeCamera == camera) {
+						camera->isActive = false;
+						fixedCamera->isActive = true;
+						activeCamera = fixedCamera;
+					} else {
+						fixedCamera->isActive = false;
+						camera->isActive = true;
+						activeCamera = camera;
+					}
 				}
 				break;
 				// case SDL_EVENT_MOUSE_BUTTON_DOWN:
@@ -123,9 +137,11 @@ void Engine::UpdateComponent(const std::shared_ptr<GameComponent>& component, fl
 		auto current = queue.front();
 		queue.pop_front();
 
-		current->Update(deltaTime);
-		for (auto& child : current->GetChildren()) {
-			queue.push_back(child);
+		if (current->isActive) {
+			current->Update(deltaTime);
+			for (auto& child : current->GetChildren()) {
+				queue.push_back(child);
+			}
 		}
 	}
 }
@@ -165,8 +181,8 @@ void Engine::Render()
 {
 	graphics->BeginFrame(Colors::DarkGray);
 
-	Matrix view = camera->GetViewMatrix();
-	Matrix proj = camera->GetProjectionMatrix();
+	Matrix view = activeCamera->GetViewMatrix();
+	Matrix proj = activeCamera->GetProjectionMatrix();
 
 	for (auto& component : gameComponents) {
 		if (!component->GetParent()) {

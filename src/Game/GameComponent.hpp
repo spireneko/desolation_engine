@@ -13,6 +13,8 @@ class GameComponent {
 	float speed = 0.0;
 	float angularSpeed = 0.0;
 
+	bool isActive = true;
+
 	GameComponent(GameContext* ctx);
 	virtual ~GameComponent() = default;
 
