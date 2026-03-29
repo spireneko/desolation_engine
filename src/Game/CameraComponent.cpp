@@ -31,9 +31,9 @@ void CameraComponent::SetFOV(float fovDegrees)
 	this->fovRadians = DirectX::XMConvertToRadians(fovDegrees);
 }
 
-void CameraComponent::SetAspectRatio(float aspectRatio)
+void CameraComponent::SetAspectRatio(float aspectRatio_)
 {
-	this->aspectRatio = aspectRatio;
+	aspectRatio = aspectRatio_;
 }
 
 Matrix CameraComponent::GetViewMatrix() const

@@ -62,7 +62,7 @@ bool Mesh::CreateCube(GameContext* context)
 		0,
 		4,
 		7,
-		3
+		3,
 	};
 
 	// Создание буфера вершин

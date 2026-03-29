@@ -57,13 +57,13 @@ bool Graphics::Initialize(SDL_Window* window, int w, int h)
 
 	device.As(&dxgiDevice);
 	dxgiDevice->GetAdapter(&adapter);
-	adapter->GetParent(IID_PPV_ARGS(&factory));
+	adapter->GetParent(IID_IDXGIFactory2, &factory);
 
 	factory->CreateSwapChainForHwnd(device.Get(), hwnd, &swapChainDesc, nullptr, nullptr, &swapChain);
 
 	// Создаем Render Target View
 	ComPtr<ID3D11Texture2D> backBuffer;
-	swapChain->GetBuffer(0, IID_PPV_ARGS(&backBuffer));
+	swapChain->GetBuffer(0, IID_ID3D11Texture2D, &backBuffer);
 	device->CreateRenderTargetView(backBuffer.Get(), nullptr, &renderTargetView);
 
 	// Создаем Depth Stencil Buffer
@@ -112,7 +112,7 @@ void Graphics::Resize(int w, int h)
 	swapChain->ResizeBuffers(0, width, height, DXGI_FORMAT_UNKNOWN, 0);
 
 	ComPtr<ID3D11Texture2D> backBuffer;
-	swapChain->GetBuffer(0, IID_PPV_ARGS(&backBuffer));
+	swapChain->GetBuffer(0, IID_ID3D11Texture2D, &backBuffer);
 	device->CreateRenderTargetView(backBuffer.Get(), nullptr, &renderTargetView);
 
 	D3D11_TEXTURE2D_DESC depthDesc = {};
