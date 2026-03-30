@@ -23,6 +23,7 @@ class Mesh {
 	~Mesh();
 
 	bool CreateCube(GameContext* context);
+	bool CreateSphere(GameContext* context, int slices = 16, int stacks = 16);
 	void Draw(GameContext* context);
 
 	size_t GetIndexCount() const { return indices.size(); }

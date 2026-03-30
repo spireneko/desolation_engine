@@ -1,8 +1,10 @@
 #include "Planets.hpp"
 
+enum MeshType { Cube, Sphere };
+
 static std::shared_ptr<GameComponent> CreateBody(
 	GameContext* ctx, const Vector3& position, const Vector3& scale, const Vector3& angularVelocity, float angularSpeed,
-	bool hasMesh = true
+	MeshType meshType = MeshType::Cube
 )
 {
 	auto object = std::make_shared<GameComponent>(ctx);
@@ -13,11 +15,13 @@ static std::shared_ptr<GameComponent> CreateBody(
 	body->SetAngularVelocity(angularVelocity);
 	body->angularSpeed = angularSpeed;
 
-	if (hasMesh) {
-		auto mesh = std::make_unique<Mesh>();
+	auto mesh = std::make_unique<Mesh>();
+	if (meshType == MeshType::Cube) {
 		mesh->CreateCube(ctx);
-		body->SetMesh(std::move(mesh));
+	} else {
+		mesh->CreateSphere(ctx);
 	}
+	body->SetMesh(std::move(mesh));
 
 	object->AddChild(body);
 
@@ -36,7 +40,7 @@ std::vector<std::shared_ptr<GameComponent>> CreatePlanetsGame(GameContext* ctx)
 {
 	std::vector<std::shared_ptr<GameComponent>> components;
 
-	auto sun = CreateBody(ctx, Vector3(0, 0, 0), Vector3(4, 4, 4), Vector3(0, 1, 0), 0.3f);
+	auto sun = CreateBody(ctx, Vector3(0, 0, 0), Vector3(4, 4, 4), Vector3(0, 1, 0), 0.3f, MeshType::Sphere);
 	components.push_back(sun);
 
 	auto sunOrbit1 = CreateOrbit(ctx, Vector3(0, 1, 0), 1.0f);
@@ -72,7 +76,8 @@ std::vector<std::shared_ptr<GameComponent>> CreatePlanetsGame(GameContext* ctx)
 	auto planet4Moon2 = CreateBody(ctx, Vector3(0, 0, 5), Vector3(0.5f, 0.5f, 0.5f), Vector3(0, 1, 0), 0.5f);
 	planet4Orbit->AddChild(planet4Moon2);
 
-	auto planet5 = CreateBody(ctx, Vector3(36, 0, 0), Vector3(2.5f, 2.5f, 2.5f), Vector3(0, 1, 0), 0.4f);
+	auto planet5 =
+		CreateBody(ctx, Vector3(36, 0, 0), Vector3(2.5f, 2.5f, 2.5f), Vector3(0, 1, 0), 0.4f, MeshType::Sphere);
 	sunOrbit3->AddChild(planet5);
 
 	auto planet6 = CreateBody(ctx, Vector3(60, 0, 0), Vector3(3, 3, 3), Vector3(1, 0, 1), 0.1f);
