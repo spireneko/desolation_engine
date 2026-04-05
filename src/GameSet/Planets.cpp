@@ -40,6 +40,13 @@ std::vector<std::shared_ptr<GameComponent>> CreatePlanetsGame(GameContext* ctx)
 {
 	std::vector<std::shared_ptr<GameComponent>> components;
 
+	auto grid = std::make_shared<GameComponent>(ctx);
+
+	auto gridMesh = std::make_unique<Mesh>();
+	gridMesh->CreateGrid(ctx, 120.0f, 24, Colors::LightGray);
+	grid->SetMesh(std::move(gridMesh));
+	components.push_back(grid);
+
 	auto sun = CreateBody(ctx, Vector3(0, 0, 0), Vector3(4, 4, 4), Vector3(0, 1, 0), 0.3f, MeshType::Sphere);
 	components.push_back(sun);
 

@@ -184,6 +184,67 @@ bool Mesh::CreateSphere(GameContext* context, int slices, int stacks)
 	return true;
 }
 
+bool Mesh::CreateGrid(GameContext* context, float size, int divisions, const Vector4& color)
+{
+	if (size <= 0.0f || divisions <= 0) {
+		return false;
+	}
+
+	auto device = context->GetGraphicsDevice();
+
+	vertices.clear();
+	indices.clear();
+
+	float half = size * 0.5f;
+	float step = size / static_cast<float>(divisions);
+
+	for (int i = 0; i <= divisions; ++i) {
+		float coord = -half + i * step;
+
+		// линия вдоль X
+		vertices.push_back({Vector3(-half, 0.0f, coord), color});
+		vertices.push_back({Vector3(half, 0.0f, coord), color});
+
+		// линия вдоль Z
+		vertices.push_back({Vector3(coord, 0.0f, -half), color});
+		vertices.push_back({Vector3(coord, 0.0f, half), color});
+	}
+
+	indices.resize(vertices.size());
+	for (WORD i = 0; i < static_cast<WORD>(indices.size()); ++i) {
+		indices[i] = i;
+	}
+
+	D3D11_BUFFER_DESC vbd = {};
+	vbd.Usage = D3D11_USAGE_DEFAULT;
+	vbd.ByteWidth = sizeof(Vertex) * vertices.size();
+	vbd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+
+	D3D11_SUBRESOURCE_DATA initData = {};
+	initData.pSysMem = vertices.data();
+	if (FAILED(device->CreateBuffer(&vbd, &initData, &vertexBuffer))) {
+		return false;
+	}
+
+	D3D11_BUFFER_DESC ibd = {};
+	ibd.Usage = D3D11_USAGE_DEFAULT;
+	ibd.ByteWidth = sizeof(WORD) * indices.size();
+	ibd.BindFlags = D3D11_BIND_INDEX_BUFFER;
+
+	initData.pSysMem = indices.data();
+	if (FAILED(device->CreateBuffer(&ibd, &initData, &indexBuffer))) {
+		return false;
+	}
+
+	topology = D3D11_PRIMITIVE_TOPOLOGY_LINELIST;
+	return true;
+}
+
+void Mesh::SetTopology(D3D11_PRIMITIVE_TOPOLOGY newTopology)
+{
+	topology = newTopology;
+}
+
 void Mesh::Draw(GameContext* ctx)
 {
 	auto device = ctx->GetGraphicsContext();
@@ -192,6 +253,6 @@ void Mesh::Draw(GameContext* ctx)
 	UINT offset = 0;
 	device->IASetVertexBuffers(0, 1, vertexBuffer.GetAddressOf(), &stride, &offset);
 	device->IASetIndexBuffer(indexBuffer.Get(), DXGI_FORMAT_R16_UINT, 0);
-	device->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	device->IASetPrimitiveTopology(topology);
 	device->DrawIndexed(static_cast<UINT>(indices.size()), 0, 0);
 }
