@@ -101,17 +101,21 @@ bool KatamariBallComponent::AttachObject(const std::shared_ptr<GameComponent>& o
 {
 	object->SetVelocity(Vector3::Zero);
 	object->speed = 0.0f;
+	object->SetAngularVelocity(Vector3::Zero);
+	object->angularSpeed = 0.0f;
+
+	Vector3 worldOffset = object->position - position;
+
+	Quaternion invRotation;
+	rotation.Inverse(invRotation);
+
+	Vector3 localOffset = Vector3::Transform(worldOffset, invRotation);
+	object->position = localOffset / scale;
+
+	object->SetRotation(invRotation * object->GetRotation());
+
 	object->scale = object->scale / scale;
 
-	Vector3 direction = object->position - position;
-	if (direction.LengthSquared() > 0.0f) {
-		direction.Normalize();
-	} else {
-		direction = Vector3(0, 1, 0);
-	}
-
-	object->position = direction * GetBoundingRadius() / scale;
-	// object->position = direction * (GetBoundingRadius() + object->GetBoundingRadius());
 	AddChild(object);
 	return true;
 }

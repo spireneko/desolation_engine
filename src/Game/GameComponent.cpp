@@ -18,6 +18,16 @@ void GameComponent::SetAngularVelocity(const Vector3& angVel)
 	}
 }
 
+void GameComponent::SetRotation(const Quaternion& rot)
+{
+	rotation = rot;
+}
+
+Quaternion GameComponent::GetRotation() const
+{
+	return rotation;
+}
+
 void GameComponent::SetBoundingRadius(float radius)
 {
 	boundingRadius = radius;

@@ -81,7 +81,7 @@ std::vector<std::shared_ptr<GameComponent>> CreateKatamariGame(
 		assetsFolder,
 		Vector3(-4.0f, 0.5f, 7.0f),
 		Vector3(1.2f, 1.2f, 1.2f),
-		0.6f,
+		0.1f,
 		stoneTexture
 	);
 	if (stone) {

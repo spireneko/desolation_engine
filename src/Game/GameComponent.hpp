@@ -21,6 +21,8 @@ class GameComponent {
 
 	void SetVelocity(const Vector3& vel);
 	void SetAngularVelocity(const Vector3& angVel);
+	void SetRotation(const Quaternion& rot);
+	Quaternion GetRotation() const;
 	void SetBoundingRadius(float radius);
 	float GetBoundingRadius() const;
 
