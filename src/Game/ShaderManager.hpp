@@ -34,6 +34,7 @@ class ShaderManager {
 	ComPtr<ID3D11PixelShader> pixelShader;
 	ComPtr<ID3D11InputLayout> inputLayout;
 	ComPtr<ID3D11Buffer> constantBuffer;
+	ComPtr<ID3D11SamplerState> samplerState;
 
 	std::vector<BYTE> vsBlob;
 	std::vector<BYTE> psBlob;

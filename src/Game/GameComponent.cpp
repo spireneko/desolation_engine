@@ -5,13 +5,27 @@ GameComponent::GameComponent(GameContext* ctx) : gameContext(ctx) {}
 void GameComponent::SetVelocity(const Vector3& vel)
 {
 	velocity = vel;
-	velocity.Normalize();
+	if (velocity.LengthSquared() > 0.0f) {
+		velocity.Normalize();
+	}
 }
 
 void GameComponent::SetAngularVelocity(const Vector3& angVel)
 {
 	angularVelocity = angVel;
-	angularVelocity.Normalize();
+	if (angularVelocity.LengthSquared() > 0.0f) {
+		angularVelocity.Normalize();
+	}
+}
+
+void GameComponent::SetBoundingRadius(float radius)
+{
+	boundingRadius = radius;
+}
+
+float GameComponent::GetBoundingRadius() const
+{
+	return boundingRadius * std::max(scale.x, std::max(scale.y, scale.z));
 }
 
 void GameComponent::AddChild(std::shared_ptr<GameComponent> child)

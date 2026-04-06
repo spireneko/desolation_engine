@@ -34,9 +34,11 @@ ShaderManager::ShaderManager(GameContext* ctx) : gameContext(ctx)
 	// Input Layout
 	D3D11_INPUT_ELEMENT_DESC layout[] = {
 		{"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0},
-		{"COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0}
+		{"NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0},
+		{"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 24, D3D11_INPUT_PER_VERTEX_DATA, 0},
+		{"COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 32, D3D11_INPUT_PER_VERTEX_DATA, 0}
 	};
-	device->CreateInputLayout(layout, 2, vsBlobPtr->GetBufferPointer(), vsBlobPtr->GetBufferSize(), &inputLayout);
+	device->CreateInputLayout(layout, 4, vsBlobPtr->GetBufferPointer(), vsBlobPtr->GetBufferSize(), &inputLayout);
 
 	// Constant Buffer
 	D3D11_BUFFER_DESC cbd = {};
@@ -44,6 +46,16 @@ ShaderManager::ShaderManager(GameContext* ctx) : gameContext(ctx)
 	cbd.Usage = D3D11_USAGE_DEFAULT;
 	cbd.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
 	device->CreateBuffer(&cbd, nullptr, &constantBuffer);
+
+	D3D11_SAMPLER_DESC samplerDesc = {};
+	samplerDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
+	samplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
+	samplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
+	samplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
+	samplerDesc.ComparisonFunc = D3D11_COMPARISON_NEVER;
+	samplerDesc.MinLOD = 0;
+	samplerDesc.MaxLOD = D3D11_FLOAT32_MAX;
+	device->CreateSamplerState(&samplerDesc, &samplerState);
 }
 
 void ShaderManager::Apply()
@@ -54,6 +66,7 @@ void ShaderManager::Apply()
 	context->PSSetShader(pixelShader.Get(), nullptr, 0);
 	context->IASetInputLayout(inputLayout.Get());
 	context->VSSetConstantBuffers(0, 1, constantBuffer.GetAddressOf());
+	context->PSSetSamplers(0, 1, samplerState.GetAddressOf());
 }
 
 void ShaderManager::UpdateConstants(const void* data)

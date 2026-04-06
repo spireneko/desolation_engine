@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <memory>
 #include <vector>
 
@@ -20,6 +21,8 @@ class GameComponent {
 
 	void SetVelocity(const Vector3& vel);
 	void SetAngularVelocity(const Vector3& angVel);
+	void SetBoundingRadius(float radius);
+	float GetBoundingRadius() const;
 
 	void AddChild(std::shared_ptr<GameComponent> child);
 	void RemoveChild(GameComponent* child);
@@ -41,6 +44,7 @@ class GameComponent {
 	Vector3 velocity = Vector3(0, 0, 0);
 	Quaternion rotation = Quaternion::Identity;
 	Vector3 angularVelocity = Vector3(0, 0, 0);
+	float boundingRadius = 0.5f;
 
 	GameComponent* parent = nullptr;
 	std::vector<std::shared_ptr<GameComponent>> children;

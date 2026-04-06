@@ -16,6 +16,9 @@ class OrbitalCamera : public CameraComponent {
 
 	void SetTarget(const Vector3& newTarget);
 
+	Vector3 GetForward() const;
+	Vector3 GetRight() const;
+
    private:
 	Vector3 target;
 	Vector3 camPos;

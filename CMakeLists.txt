@@ -40,6 +40,8 @@ add_compile_definitions(NOMINMAX)
 # Избавляемся от ворнингов, что мы не используем secure функции винды
 add_definitions(-D_CRT_SECURE_NO_WARNINGS)
 
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fopenmp")
+
 file(GLOB_RECURSE sources CONFIGURE_DEPENDS "src/*.cpp")
 
 # Основной экзешник
@@ -54,7 +56,7 @@ set(ORIGINAL_BUILD_TYPE ${CMAKE_BUILD_TYPE})
 set(CMAKE_BUILD_TYPE Release CACHE STRING "Forced Release for dependencies" FORCE)
 
 include(sdl)
-include(flecs)
+# include(flecs)
 
 ## Скачиваем slang
 # include(slang)
@@ -67,6 +69,9 @@ else()
 endif()
 
 include(directxtk)
+include(openmp)
+include(directxtex)
+include(tinyobjloader)
 
 # Возвращаемся к оригинальному типу сборки
 set(CMAKE_BUILD_TYPE "${ORIGINAL_BUILD_TYPE}" CACHE STRING "" FORCE)
@@ -77,7 +82,9 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     ${DIRECTX_TARGET}
     ${DXVK_TARGET}
     ${DIRECTXTK_TARGET}
-    ${FLECS_TARGET}
+    ${OPENMP_TARGET}
+    ${DIRECTX_TEX_TARGET}
+    ${TINYOBJLOADER_TARGET}
     ${SLANG_TARGET}
 )
 
@@ -87,4 +94,11 @@ add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
         "${CMAKE_CURRENT_SOURCE_DIR}/shaders"
         "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/shaders"
     COMMENT "Копирование папки shaders в ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}"
+)
+
+add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        "${CMAKE_CURRENT_SOURCE_DIR}/assets"
+        "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/assets"
+    COMMENT "Копирование папки assets в ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}"
 )
