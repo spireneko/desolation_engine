@@ -1,7 +1,31 @@
+struct DirectionalLight {
+    float3 direction;
+    float intensity;
+
+	float3 color;
+    float pad0;
+};
+
+struct Material {
+	float3 ambient;
+    float pad0;
+
+	float3 diffuse;
+    float pad1;
+
+	float3 specular;
+	float shininess;
+};
+
 cbuffer ConstantBuffer : register(b0) {
-    matrix world;
-    matrix view;
-    matrix projection;
+    matrix world, view, projection;
+
+    float3 cameraPosition;
+    float padding;
+
+    DirectionalLight light;
+    
+    Material material;
 };
 
 struct VS_INPUT {
@@ -13,6 +37,7 @@ struct VS_INPUT {
 
 struct PS_INPUT {
     float4 pos : SV_POSITION;
+    float3 worldPos : POSITION;
     float3 normal : NORMAL;
     float2 uv : TEXCOORD;
     float4 color : COLOR;
@@ -21,6 +46,7 @@ struct PS_INPUT {
 PS_INPUT main(VS_INPUT input) {
     PS_INPUT output;
     float4 worldPos = mul(float4(input.pos, 1.0f), world);
+    output.worldPos = worldPos.xyz;
     output.pos = mul(worldPos, view);
     output.pos = mul(output.pos, projection);
     output.normal = mul(float4(input.normal, 0.0f), world).xyz;

@@ -88,17 +88,26 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     ${SLANG_TARGET}
 )
 
-# Копирование папки shaders в папку с бинарником
-add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-        "${CMAKE_CURRENT_SOURCE_DIR}/shaders"
-        "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/shaders"
-    COMMENT "Копирование папки shaders в ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}"
+function(copy_directory_on_change source_dir dest_dir target_name)
+    file(GLOB_RECURSE files CONFIGURE_DEPENDS "${source_dir}/*")
+    add_custom_target(${target_name} ALL
+        COMMAND ${CMAKE_COMMAND} -E copy_directory "${source_dir}" "${dest_dir}"
+        COMMENT "Copying ${source_dir} -> ${dest_dir}"
+        DEPENDS ${files}
+        SOURCES ${files}
+    )
+endfunction()
+
+copy_directory_on_change(
+    "${CMAKE_CURRENT_SOURCE_DIR}/shaders"
+    "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/shaders"
+    copy_shaders
 )
 
-add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-        "${CMAKE_CURRENT_SOURCE_DIR}/assets"
-        "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/assets"
-    COMMENT "Копирование папки assets в ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}"
+copy_directory_on_change(
+    "${CMAKE_CURRENT_SOURCE_DIR}/assets"
+    "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/assets"
+    copy_assets
 )
+
+add_dependencies(${PROJECT_NAME} copy_shaders copy_assets)

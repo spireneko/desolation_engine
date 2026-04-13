@@ -11,7 +11,7 @@ ShaderManager::ShaderManager(GameContext* ctx) : gameContext(ctx)
 	);
 	if (FAILED(hr)) {
 		if (errorBlob) {
-			OutputDebugStringA((char*)errorBlob->GetBufferPointer());
+			SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "%s", (char*)errorBlob->GetBufferPointer());
 		}
 		throw std::runtime_error("Failed to compile vertex shader");
 	}
@@ -22,7 +22,7 @@ ShaderManager::ShaderManager(GameContext* ctx) : gameContext(ctx)
 	);
 	if (FAILED(hr)) {
 		if (errorBlob) {
-			OutputDebugStringA((char*)errorBlob->GetBufferPointer());
+			SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "%s", (char*)errorBlob->GetBufferPointer());
 		}
 		throw std::runtime_error("Failed to compile pixel shader");
 	}
@@ -42,7 +42,7 @@ ShaderManager::ShaderManager(GameContext* ctx) : gameContext(ctx)
 
 	// Constant Buffer
 	D3D11_BUFFER_DESC cbd = {};
-	cbd.ByteWidth = sizeof(Matrix) * 3;	 // world, view, projection
+	cbd.ByteWidth = sizeof(PerFrameConstants);
 	cbd.Usage = D3D11_USAGE_DEFAULT;
 	cbd.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
 	device->CreateBuffer(&cbd, nullptr, &constantBuffer);
@@ -66,6 +66,7 @@ void ShaderManager::Apply()
 	context->PSSetShader(pixelShader.Get(), nullptr, 0);
 	context->IASetInputLayout(inputLayout.Get());
 	context->VSSetConstantBuffers(0, 1, constantBuffer.GetAddressOf());
+	context->PSSetConstantBuffers(0, 1, constantBuffer.GetAddressOf());
 	context->PSSetSamplers(0, 1, samplerState.GetAddressOf());
 }
 

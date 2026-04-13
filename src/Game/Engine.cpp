@@ -134,24 +134,28 @@ void Engine::DrawComponent(const std::shared_ptr<GameComponent>& component, cons
 	std::deque<std::shared_ptr<GameComponent>> queue;
 	queue.push_back(component);
 
-	struct Matrices {
-		Matrix world;
-		Matrix view;
-		Matrix projection;
-	} mats;
+	PerFrameConstants constants;
 
-	mats.view = view.Transpose();
-	mats.projection = proj.Transpose();
+	constants.view = view.Transpose();
+	constants.projection = proj.Transpose();
+
+	constants.cameraPosition = fixedCamera->position;
+
+	constants.light.direction = Vector3(1.3, -1.0, 0.2);
+	constants.light.direction.Normalize();
+	constants.light.color = Vector3(1.0, 1.0, 1.0);
+	constants.light.intensity = 1.0;
 
 	while (!queue.empty()) {
 		auto current = queue.front();
 		queue.pop_front();
 
 		Matrix world = current->GetWorldMatrix();
-		mats.world = world.Transpose();
+		constants.world = world.Transpose();
+		constants.material = current->GetMaterial();
 
 		shaders->Apply();
-		shaders->UpdateConstants(&mats);
+		shaders->UpdateConstants(&constants);
 
 		current->Draw();
 		for (auto& child : current->GetChildren()) {

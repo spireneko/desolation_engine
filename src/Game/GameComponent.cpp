@@ -78,6 +78,16 @@ Mesh* GameComponent::GetMesh() const
 	return mesh.get();
 }
 
+void GameComponent::SetMaterial(const Material& mat)
+{
+	material = mat;
+}
+
+const Material& GameComponent::GetMaterial() const
+{
+	return material;
+}
+
 Matrix GameComponent::GetWorldMatrix() const
 {
 	Matrix localMatrix =

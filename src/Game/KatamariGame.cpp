@@ -40,14 +40,20 @@ std::vector<std::shared_ptr<GameComponent>> CreateKatamariGame(
 	grid->SetMesh(std::move(gridMesh));
 	components.push_back(grid);
 
+	auto pickTexture = std::make_shared<Texture>();
+	if (!pickTexture->LoadFromFile(ctx, L"assets/textures/Alice guitar pick_BaseColor.png")) {
+		pickTexture = Texture::CreateWhite(ctx);
+	}
+
 	// Ball
 	outBall = std::make_shared<KatamariBallComponent>(ctx);
 	outBall->scale = Vector3(2.5, 2.5, 2.5);
 	outBall->position.y = outBall->GetBoundingRadius();
 
-	auto ballMesh = std::make_unique<Mesh>();
-	ballMesh->CreateSphere(ctx, 24, 24);
-	outBall->SetMesh(std::move(ballMesh));
+	auto outBallMesh = std::make_unique<Mesh>();
+	outBallMesh->CreateSphere(ctx, 24, 24);
+	outBallMesh->SetTexture(pickTexture);
+	outBall->SetMesh(std::move(outBallMesh));
 	components.push_back(outBall);
 
 	// Objects loaded from OBJ
@@ -59,7 +65,7 @@ std::vector<std::shared_ptr<GameComponent>> CreateKatamariGame(
 	}
 	auto crate = CreateTexturedObj(
 		ctx,
-		"assets/models/box.obj",
+		"assets/models/cube.obj",
 		assetsFolder,
 		Vector3(5.0f, 0.5f, 6.0f),
 		Vector3(1.0f, 1.0f, 1.0f),
@@ -89,11 +95,21 @@ std::vector<std::shared_ptr<GameComponent>> CreateKatamariGame(
 		stickables.push_back(stone);
 	}
 
-	// Picks
-	auto pickTexture = std::make_shared<Texture>();
-	if (!pickTexture->LoadFromFile(ctx, L"assets/textures/Alice guitar pick_BaseColor.png")) {
-		pickTexture = Texture::CreateWhite(ctx);
+	// Ball
+	auto ball = std::make_shared<GameComponent>(ctx);
+	ball->scale = Vector3(2, 2, 2);
+	ball->position = Vector3(3.0, ball->GetBoundingRadius(), 10.0);
+
+	auto ballMesh = std::make_unique<Mesh>();
+	ballMesh->CreateSphere(ctx, 12, 12);
+	ballMesh->SetTexture(stoneTexture);
+	ball->SetMesh(std::move(ballMesh));
+	if (ball) {
+		components.push_back(ball);
+		stickables.push_back(ball);
 	}
+
+	// Picks
 	auto pick = CreateTexturedObj(
 		ctx,
 		"assets/models/Alice_guitar_pick.obj",
@@ -103,6 +119,9 @@ std::vector<std::shared_ptr<GameComponent>> CreateKatamariGame(
 		0.4f,
 		pickTexture
 	);
+	auto pickMat = pick->GetMaterial();
+	pickMat.shininess = 1 << 8;
+	pick->SetMaterial(pickMat);
 	if (pick) {
 		components.push_back(pick);
 		stickables.push_back(pick);

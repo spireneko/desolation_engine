@@ -142,7 +142,7 @@ bool Mesh::CreateSphere(GameContext* context, int slices, int stacks)
 			Vector3 normal = position;
 			normal.Normalize();
 			Vector2 uv(static_cast<float>(slice) / slices, static_cast<float>(stack) / stacks);
-			Vector4 color = Vector4::Lerp(Colors::Blue, Colors::Red, static_cast<float>(stack) / stacks);
+			Vector4 color = Colors::White;
 			vertices.push_back(CreateVertex(position, normal, uv, color));
 		}
 	}
@@ -338,14 +338,14 @@ bool Mesh::LoadFromObj(
 					attrib.normals[3 * index.normal_index + 1],
 					attrib.normals[3 * index.normal_index + 2]
 				);
+				vertex.normal.Normalize();
 			} else {
 				vertex.normal = Vector3::Up;
 			}
 
 			if (index.texcoord_index >= 0 && (size_t)(2 * index.texcoord_index + 1) < attrib.texcoords.size()) {
 				vertex.uv = Vector2(
-					attrib.texcoords[2 * index.texcoord_index + 0],
-					1.0f - attrib.texcoords[2 * index.texcoord_index + 1]
+					attrib.texcoords[2 * index.texcoord_index + 0], 1.0 - attrib.texcoords[2 * index.texcoord_index + 1]
 				);
 			} else {
 				vertex.uv = Vector2::Zero;
@@ -360,6 +360,10 @@ bool Mesh::LoadFromObj(
 			}
 			indices.push_back(uniqueVertices[vertex]);
 		}
+	}
+
+	for (size_t i = 0; i < indices.size(); i += 3) {
+		std::swap(indices[i + 1], indices[i + 2]);
 	}
 
 	D3D11_BUFFER_DESC vbd = {};

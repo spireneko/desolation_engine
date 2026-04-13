@@ -21,7 +21,6 @@ class OrbitalCamera : public CameraComponent {
 
    private:
 	Vector3 target;
-	Vector3 camPos;
 
 	float distance = 10.0f;
 	float minDistance;

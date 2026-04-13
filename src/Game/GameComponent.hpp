@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "GameContext.hpp"
+#include "Material.hpp"
 #include "Mesh.hpp"
 
 class GameComponent {
@@ -34,6 +35,9 @@ class GameComponent {
 	void SetMesh(std::unique_ptr<Mesh>&& m);
 	Mesh* GetMesh() const;
 
+	void SetMaterial(const Material& mat);
+	const Material& GetMaterial() const;
+
 	Matrix GetWorldMatrix() const;
 
 	virtual void Draw();
@@ -47,6 +51,15 @@ class GameComponent {
 	Quaternion rotation = Quaternion::Identity;
 	Vector3 angularVelocity = Vector3(0, 0, 0);
 	float boundingRadius = 0.5f;
+
+	Material material = {
+		Vector3(0.2, 0.2, 0.2),	 // ambient
+		0.0,					 // padding
+		Vector3(0.5, 0.5, 0.5),	 // diffuse
+		0.0,					 // padding
+		Vector3(0.7, 0.7, 0.7),	 // specular
+		32.0,					 // shininess
+	};
 
 	GameComponent* parent = nullptr;
 	std::vector<std::shared_ptr<GameComponent>> children;

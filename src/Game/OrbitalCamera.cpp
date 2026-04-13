@@ -8,13 +8,7 @@ OrbitalCamera::OrbitalCamera(
 	  distance(initialDistance),
 	  minDistance(minDistance),
 	  maxDistance(maxDistance)
-{
-	position = Vector3(0, 0, -distance);
-
-	// auto* input = ctx->GetInputManager();
-	// input->RegisterAction("orbital_cam_forward", {SDLK_W}, {}, InputState::Held, [this]() { moveForward = true; });
-	// input->RegisterAction("orbital_cam_backward", {SDLK_S}, {}, InputState::Held, [this]() { moveBackward = true; });
-}
+{}
 
 void OrbitalCamera::Update(float deltaTime)
 {
@@ -36,17 +30,15 @@ void OrbitalCamera::Update(float deltaTime)
 		distance = std::min(maxDistance, distance + zoomSpeed * deltaTime);
 	}
 
-	position = Vector3(0, 0, -distance);
-
-	Matrix RotMat = Matrix::CreateFromYawPitchRoll(yaw, pitch, 0.0);  // // Обновление позиции относительно цели
-	camPos = Vector3::Transform(position, RotMat) + target;
+	Matrix RotMat = Matrix::CreateFromYawPitchRoll(yaw, pitch, 0.0);
+	position = Vector3::Transform(Vector3(0, 0, -distance), RotMat) + target;
 
 	moveForward = moveBackward = false;
 }
 
 Matrix OrbitalCamera::GetViewMatrix() const
 {
-	return Matrix::CreateLookAt(camPos, target, Vector3::Up);
+	return Matrix::CreateLookAt(position, target, Vector3::Up);
 }
 
 Vector3 OrbitalCamera::GetForward() const
