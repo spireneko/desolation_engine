@@ -53,6 +53,12 @@ Vector3 OrbitalCamera::GetRight() const
 	return Vector3::Transform(Vector3(-1, 0, 0), yawRotation);
 }
 
+Vector3 OrbitalCamera::GetLookDirection() const
+{
+	Matrix rotMat = Matrix::CreateFromYawPitchRoll(yaw, pitch, 0.0f);
+	return Vector3::Transform(Vector3(0, 0, 1), rotMat);
+}
+
 void OrbitalCamera::SetTarget(const Vector3& newTarget)
 {
 	target = newTarget;

@@ -8,6 +8,7 @@ KatamariBallComponent::KatamariBallComponent(GameContext* ctx) : GameComponent(c
 	input->RegisterAction("katamari_backward", {SDLK_S}, {}, InputState::Held);
 	input->RegisterAction("katamari_left", {SDLK_A}, {}, InputState::Held);
 	input->RegisterAction("katamari_right", {SDLK_D}, {}, InputState::Held);
+	input->RegisterAction("katamari_shoot", {SDLK_SPACE}, {}, InputState::Pressed);
 
 	moveSpeed = 10.0;
 	SetBoundingRadius(0.5);
@@ -71,6 +72,10 @@ void KatamariBallComponent::Update(float deltaTime)
 
 	TryAttachObjects();
 
+	if (input->IsActionActive("katamari_shoot")) {
+		DetachLastObject();
+	}
+
 	if (camera) {
 		camera->SetTarget(position);
 	}
@@ -118,4 +123,31 @@ bool KatamariBallComponent::AttachObject(const std::shared_ptr<GameComponent>& o
 
 	AddChild(object);
 	return true;
+}
+
+void KatamariBallComponent::DetachLastObject()
+{
+	if (children.empty()) {
+		return;
+	}
+
+	auto lastObject = children.back();
+
+	Matrix worldMatrix = lastObject->GetWorldMatrix();
+	Vector3 worldPos;
+	Quaternion worldRot;
+	Vector3 worldScale;
+	worldMatrix.Decompose(worldScale, worldRot, worldPos);
+
+	RemoveChild(lastObject.get());
+
+	lastObject->position = worldPos;
+	lastObject->SetRotation(worldRot);
+	lastObject->scale = worldScale;
+
+	Vector3 shootDirection = camera->GetLookDirection();
+
+	float shootSpeed = 15.0f;
+	lastObject->speed = shootSpeed;
+	lastObject->SetVelocity(shootDirection);
 }

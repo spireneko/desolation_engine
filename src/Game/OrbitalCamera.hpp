@@ -19,6 +19,8 @@ class OrbitalCamera : public CameraComponent {
 	Vector3 GetForward() const;
 	Vector3 GetRight() const;
 
+	Vector3 GetLookDirection() const;
+
    private:
 	Vector3 target;
 

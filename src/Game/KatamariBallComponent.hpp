@@ -20,4 +20,5 @@ class KatamariBallComponent : public GameComponent {
 
 	void TryAttachObjects();
 	bool AttachObject(const std::shared_ptr<GameComponent>& object);
+	void DetachLastObject();
 };
