@@ -29,6 +29,8 @@ bool Engine::Initialize(const char* title, int w, int h)
 	// Шейдеры
 	shaders = std::make_unique<ShaderManager>(this);
 
+	lightManager = std::make_unique<LightManager>();
+
 	// Input Manager
 	inputManager = std::make_unique<InputManager>();
 
@@ -141,10 +143,12 @@ void Engine::DrawComponent(const std::shared_ptr<GameComponent>& component, cons
 
 	constants.cameraPosition = fixedCamera->position;
 
-	constants.light.direction = Vector3(1.3, -1.0, 0.2);
-	constants.light.direction.Normalize();
-	constants.light.color = Vector3(1.0, 1.0, 1.0);
-	constants.light.intensity = 1.0;
+	constants.dirLight.direction = Vector3(1.3, -1.0, 0.2);
+	constants.dirLight.direction.Normalize();
+	constants.dirLight.color = Vector3(1.0, 1.0, 1.0);
+	constants.dirLight.intensity = 1.0;
+
+	lightManager->PrepareLights(constants, fixedCamera->position);
 
 	while (!queue.empty()) {
 		auto current = queue.front();
@@ -200,6 +204,11 @@ ID3D11DeviceContext* Engine::GetGraphicsContext()
 ID3D11Device* Engine::GetGraphicsDevice()
 {
 	return graphics->GetDevice();
+}
+
+LightManager* Engine::GetLightManager()
+{
+	return lightManager.get();
 }
 
 InputManager* Engine::GetInputManager()

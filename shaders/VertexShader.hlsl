@@ -6,6 +6,20 @@ struct DirectionalLight {
     float pad0;
 };
 
+struct PointLight {
+    float3 position;
+    float intensity;
+
+    float3 color;
+    float range;
+
+    float constant;
+	float linearAttenuation;
+	float quadratic;
+    float pad0;
+};
+
+
 struct Material {
 	float3 ambient;
     float pad0;
@@ -21,10 +35,12 @@ cbuffer ConstantBuffer : register(b0) {
     matrix world, view, projection;
 
     float3 cameraPosition;
-    float padding;
+    int pointLightCount;
 
     DirectionalLight light;
-    
+
+    PointLight pointLights[16];
+
     Material material;
 };
 

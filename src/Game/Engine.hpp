@@ -11,7 +11,6 @@
 #include "GameComponent.hpp"
 #include "GameContext.hpp"
 #include "Graphics.hpp"
-#include "InputManager.hpp"
 #include "KatamariBallComponent.hpp"
 #include "KatamariGame.hpp"
 #include "Mesh.hpp"
@@ -29,6 +28,7 @@ class Engine : public GameContext {
 
 	ID3D11DeviceContext* GetGraphicsContext() override;
 	ID3D11Device* GetGraphicsDevice() override;
+	LightManager* GetLightManager() override;
 	InputManager* GetInputManager() override;
 
    private:
@@ -47,6 +47,7 @@ class Engine : public GameContext {
 	std::shared_ptr<OrbitalCamera> fixedCamera;
 	std::shared_ptr<KatamariBallComponent> ball;
 	std::unique_ptr<ShaderManager> shaders;
+	std::unique_ptr<LightManager> lightManager;
 	std::unique_ptr<InputManager> inputManager;
 
 	int width, height;

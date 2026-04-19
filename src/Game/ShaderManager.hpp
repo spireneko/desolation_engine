@@ -11,6 +11,7 @@
 #include "GameContext.hpp"
 #include "Light.hpp"
 #include "Material.hpp"
+#include "PerFrameConstants.hpp"
 
 using namespace DirectX::SimpleMath;
 using Microsoft::WRL::ComPtr;
@@ -40,19 +41,4 @@ class ShaderManager {
 
 	std::vector<BYTE> vsBlob;
 	std::vector<BYTE> psBlob;
-};
-
-struct PerFrameConstants {
-	Matrix world;
-
-	Matrix view;
-
-	Matrix projection;
-
-	Vector3 cameraPosition;
-	float padding;
-
-	DirectionalLight light;
-
-	Material material;
 };

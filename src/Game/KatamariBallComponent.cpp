@@ -1,5 +1,7 @@
 #include "KatamariBallComponent.hpp"
+
 #include "InputManager.hpp"
+#include "PointLight.hpp"
 
 KatamariBallComponent::KatamariBallComponent(GameContext* ctx) : GameComponent(ctx)
 {
@@ -133,6 +135,18 @@ void KatamariBallComponent::DetachLastObject()
 
 	auto lastObject = children.back();
 
+	LightData::PointLight lightData;
+	lightData.position = Vector3::Zero;
+	lightData.intensity = 3.0f;
+	lightData.color = Vector3(1.0f, 0.7f, 0.3f);
+	lightData.range = 15.0f;
+	lightData.constant = 1.0f;
+	lightData.linear = 0.14f;
+	lightData.quadratic = 0.07f;
+
+	auto pointLight = PointLight::Create(gameContext, lightData);
+	lastObject->AddChild(pointLight);
+
 	Matrix worldMatrix = lastObject->GetWorldMatrix();
 	Vector3 worldPos;
 	Quaternion worldRot;
@@ -146,7 +160,6 @@ void KatamariBallComponent::DetachLastObject()
 	lastObject->scale = worldScale;
 
 	Vector3 shootDirection = camera->GetLookDirection();
-
 	float shootSpeed = 15.0f;
 	lastObject->speed = shootSpeed;
 	lastObject->SetVelocity(shootDirection);
