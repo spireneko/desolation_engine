@@ -34,11 +34,25 @@ std::vector<std::shared_ptr<GameComponent>> CreateKatamariGame(
 	std::vector<std::shared_ptr<GameComponent>> stickables;
 
 	// Ground grid
-	auto grid = std::make_shared<GameComponent>(ctx);
-	auto gridMesh = std::make_unique<Mesh>();
-	gridMesh->CreateGrid(ctx, 120.0f, 24, Colors::LightGray);
-	grid->SetMesh(std::move(gridMesh));
-	components.push_back(grid);
+	// auto grid = std::make_shared<GameComponent>(ctx);
+	// auto gridMesh = std::make_unique<Mesh>();
+	// gridMesh->CreateGrid(ctx, 120.0f, 24, Colors::LightGray);
+	// grid->SetMesh(std::move(gridMesh));
+	// components.push_back(grid);
+
+	// Floor
+	auto grassTexture = std::make_shared<Texture>();
+	if (!grassTexture->LoadFromFile(ctx, L"assets/textures/minegrass.jpg")) {
+		grassTexture = Texture::CreateWhite(ctx);
+	}
+
+	auto floor = std::make_shared<GameComponent>(ctx);
+	auto floorMesh = std::make_unique<Mesh>();
+	floorMesh->CreatePlane(ctx);
+	floorMesh->SetTexture(grassTexture);
+	floor->SetMesh(std::move(floorMesh));
+	floor->scale = Vector3(120.0f, 1.0f, 120.0f);
+	components.push_back(floor);
 
 	auto pickTexture = std::make_shared<Texture>();
 	if (!pickTexture->LoadFromFile(ctx, L"assets/textures/Alice guitar pick_BaseColor.png")) {
@@ -67,7 +81,7 @@ std::vector<std::shared_ptr<GameComponent>> CreateKatamariGame(
 		ctx,
 		"assets/models/cube.obj",
 		assetsFolder,
-		Vector3(5.0f, 0.5f, 6.0f),
+		Vector3(5.0, 1.0, 6.0),
 		Vector3(1.0f, 1.0f, 1.0f),
 		0.5f,
 		crateTexture
@@ -85,7 +99,7 @@ std::vector<std::shared_ptr<GameComponent>> CreateKatamariGame(
 		ctx,
 		"assets/models/pyramid.obj",
 		assetsFolder,
-		Vector3(-4.0f, 0.5f, 7.0f),
+		Vector3(-4.0, 1.2, 7.0),
 		Vector3(1.2f, 1.2f, 1.2f),
 		0.1f,
 		stoneTexture
@@ -122,6 +136,7 @@ std::vector<std::shared_ptr<GameComponent>> CreateKatamariGame(
 	auto pickMat = pick->GetMaterial();
 	pickMat.shininess = 1 << 8;
 	pick->SetMaterial(pickMat);
+	pick->Rotate(90, 0, 0);
 	if (pick) {
 		components.push_back(pick);
 		stickables.push_back(pick);

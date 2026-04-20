@@ -36,6 +36,26 @@ void CameraComponent::SetAspectRatio(float aspectRatio_)
 	aspectRatio = aspectRatio_;
 }
 
+float CameraComponent::GetFOVRadians() const
+{
+	return fovRadians;
+}
+
+float CameraComponent::GetAspectRatio() const
+{
+	return aspectRatio;
+}
+
+float CameraComponent::GetNearPlane() const
+{
+	return nearPlane;
+}
+
+float CameraComponent::GetFarPlane() const
+{
+	return farPlane;
+}
+
 Matrix CameraComponent::GetViewMatrix() const
 {
 	Vector3 target = position + Vector3::Transform(Vector3(0, 0, 1), rotation);

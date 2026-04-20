@@ -28,6 +28,17 @@ Quaternion GameComponent::GetRotation() const
 	return rotation;
 }
 
+void GameComponent::Rotate(float yawDegrees, float pitchDegrees, float rollDegrees)
+{
+	float yaw = DirectX::XMConvertToRadians(yawDegrees);
+	float pitch = DirectX::XMConvertToRadians(pitchDegrees);
+	float roll = DirectX::XMConvertToRadians(rollDegrees);
+
+	Quaternion deltaRot = Quaternion::CreateFromYawPitchRoll(yaw, pitch, roll);
+
+	rotation = Quaternion::Concatenate(rotation, deltaRot);
+}
+
 void GameComponent::SetBoundingRadius(float radius)
 {
 	boundingRadius = radius;

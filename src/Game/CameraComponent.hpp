@@ -11,6 +11,10 @@ class CameraComponent : public GameComponent {
 	void GetPerspective(float* fovDegrees, float* aspectRatio, float* nearPlane, float* farPlane) const;
 	void SetFOV(float fovDegrees);
 	void SetAspectRatio(float aspectRatio);
+	float GetFOVRadians() const;
+	float GetAspectRatio() const;
+	float GetNearPlane() const;
+	float GetFarPlane() const;
 
 	virtual Matrix GetViewMatrix() const;
 	Matrix GetProjectionMatrix() const;

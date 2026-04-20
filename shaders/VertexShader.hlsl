@@ -31,6 +31,20 @@ struct Material {
 	float shininess;
 };
 
+struct CascadeData {
+    float4x4 viewProj;
+    float splitDistance;
+    float3 pad;
+};
+
+struct ShadowConstants {
+    CascadeData cascades[4];
+    int cascadeCount;
+    float shadowMapSize;
+    float pcfKernelSize;
+    float bias;
+};
+
 cbuffer ConstantBuffer : register(b0) {
     matrix world, view, projection;
 
@@ -42,6 +56,8 @@ cbuffer ConstantBuffer : register(b0) {
     PointLight pointLights[16];
 
     Material material;
+
+    ShadowConstants shadowData;
 };
 
 struct VS_INPUT {
@@ -57,16 +73,25 @@ struct PS_INPUT {
     float3 normal : NORMAL;
     float2 uv : TEXCOORD;
     float4 color : COLOR;
+    float viewDepth : TEXCOORD1;
 };
 
 PS_INPUT main(VS_INPUT input) {
     PS_INPUT output;
+
     float4 worldPos = mul(float4(input.pos, 1.0f), world);
     output.worldPos = worldPos.xyz;
-    output.pos = mul(worldPos, view);
-    output.pos = mul(output.pos, projection);
+
+    float4 viewPos = mul(worldPos, view);
+    output.viewDepth = viewPos.z;
+
+    output.pos = mul(viewPos, projection);
+
     output.normal = mul(float4(input.normal, 0.0f), world).xyz;
+
     output.uv = input.uv;
+
     output.color = input.color;
+
     return output;
 }

@@ -122,6 +122,71 @@ bool Mesh::CreateCube(GameContext* context)
 	return true;
 }
 
+void Mesh::CreatePlane(GameContext* context)
+{
+	auto device = context->GetGraphicsDevice();
+
+	vertices.clear();
+	indices.clear();
+
+	const Vector3 positions[] = {
+		{-0.5, 0, -0.5},
+		{0.5, 0, -0.5},
+		{0.5, 0, 0.5},
+		{-0.5, 0, 0.5},
+	};
+
+	const Vector3 normals[] = {
+		{0, 1, -1},
+		{0, 1, 1},
+	};
+
+	const Vector2 uvs[] = {{0, 1}, {1, 1}, {1, 0}, {0, 0}};
+	const Vector4 color = Colors::White;
+
+	Vertex faceVertices[4];
+	int faceIndex = 0;
+	auto addFace = [&](int a, int b, int c, int d, const Vector3& normal) {
+		faceVertices[faceIndex++] = CreateVertex(positions[a], normal, uvs[0], color);
+		faceVertices[faceIndex++] = CreateVertex(positions[b], normal, uvs[1], color);
+		faceVertices[faceIndex++] = CreateVertex(positions[c], normal, uvs[2], color);
+		faceVertices[faceIndex++] = CreateVertex(positions[d], normal, uvs[3], color);
+	};
+
+	addFace(0, 1, 2, 3, normals[0]);
+
+	vertices.assign(std::begin(faceVertices), std::end(faceVertices));
+
+	uint32_t faceIndices[] = {0, 1, 2, 0, 2, 3};
+
+	indices.assign(std::begin(faceIndices), std::end(faceIndices));
+
+	D3D11_BUFFER_DESC vbd = {};
+	vbd.Usage = D3D11_USAGE_DEFAULT;
+	vbd.ByteWidth = static_cast<UINT>(sizeof(Vertex) * vertices.size());
+	vbd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+
+	D3D11_SUBRESOURCE_DATA initData = {};
+	initData.pSysMem = vertices.data();
+	if (FAILED(device->CreateBuffer(&vbd, &initData, &vertexBuffer))) {
+		SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to create vertex buffer for plane mesh");
+		return;
+	}
+
+	D3D11_BUFFER_DESC ibd = {};
+	ibd.Usage = D3D11_USAGE_DEFAULT;
+	ibd.ByteWidth = static_cast<UINT>(sizeof(uint32_t) * indices.size());
+	ibd.BindFlags = D3D11_BIND_INDEX_BUFFER;
+
+	initData.pSysMem = indices.data();
+	if (FAILED(device->CreateBuffer(&ibd, &initData, &indexBuffer))) {
+		SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to create index buffer for plane mesh");
+		return;
+	}
+
+	SetTexture(Texture::CreateWhite(context));
+}
+
 bool Mesh::CreateSphere(GameContext* context, int slices, int stacks)
 {
 	auto device = context->GetGraphicsDevice();

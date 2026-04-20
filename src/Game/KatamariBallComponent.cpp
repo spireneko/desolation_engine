@@ -159,7 +159,7 @@ void KatamariBallComponent::DetachLastObject()
 	lastObject->SetRotation(worldRot);
 	lastObject->scale = worldScale;
 
-	Vector3 shootDirection = camera->GetLookDirection();
+	Vector3 shootDirection = camera->GetForward();
 	float shootSpeed = 15.0f;
 	lastObject->speed = shootSpeed;
 	lastObject->SetVelocity(shootDirection);

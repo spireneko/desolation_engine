@@ -25,4 +25,20 @@ struct PointLight {
 	float quadratic;
 	float padding0;
 };
+
+struct CascadeData {
+	Matrix viewProj;
+
+	float splitDistance;
+	float pad[3];
+};
+
+struct ShadowConstants {
+	CascadeData cascades[4];
+
+	int cascadeCount;
+	float shadowMapSize;
+	float pcfKernelSize;
+	float bias;
+};
 }  // namespace LightData

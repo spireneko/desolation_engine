@@ -56,6 +56,36 @@ ShaderManager::ShaderManager(GameContext* ctx) : gameContext(ctx)
 	samplerDesc.MinLOD = 0;
 	samplerDesc.MaxLOD = D3D11_FLOAT32_MAX;
 	device->CreateSamplerState(&samplerDesc, &samplerState);
+
+	// Shadow vertex shader
+	hr = D3DCompileFromFile(
+		L"shaders/ShadowVertexShader.hlsl", nullptr, nullptr, "main", "vs_5_0", 0, 0, &vsBlobPtr, &errorBlob
+	);
+	if (FAILED(hr)) {
+		if (errorBlob) {
+			SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "%s", (char*)errorBlob->GetBufferPointer());
+		}
+		throw std::runtime_error("Failed to compile shadow vertex shader");
+	}
+	device->CreateVertexShader(vsBlobPtr->GetBufferPointer(), vsBlobPtr->GetBufferSize(), nullptr, &shadowVertexShader);
+
+	// Shadow pixel shader
+	hr = D3DCompileFromFile(
+		L"shaders/ShadowPixelShader.hlsl", nullptr, nullptr, "main", "ps_5_0", 0, 0, &psBlobPtr, &errorBlob
+	);
+	if (FAILED(hr)) {
+		if (errorBlob) {
+			SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "%s", (char*)errorBlob->GetBufferPointer());
+		}
+		throw std::runtime_error("Failed to compile shadow pixel shader");
+	}
+
+	// Shadow constant buffer (world + viewProj)
+	D3D11_BUFFER_DESC shadowCbd = {};
+	shadowCbd.ByteWidth = sizeof(Matrix) * 2;
+	shadowCbd.Usage = D3D11_USAGE_DEFAULT;
+	shadowCbd.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+	device->CreateBuffer(&shadowCbd, nullptr, &shadowConstantBuffer);
 }
 
 void ShaderManager::Apply()
@@ -74,4 +104,26 @@ void ShaderManager::UpdateConstants(const void* data)
 {
 	auto device = gameContext->GetGraphicsContext();
 	device->UpdateSubresource(constantBuffer.Get(), 0, nullptr, data, 0, 0);
+}
+
+void ShaderManager::ApplyShadow()
+{
+	auto context = gameContext->GetGraphicsContext();
+	context->VSSetShader(shadowVertexShader.Get(), nullptr, 0);
+	context->PSSetShader(shadowPixelShader.Get(), nullptr, 0);
+	context->IASetInputLayout(inputLayout.Get());
+	context->VSSetConstantBuffers(0, 1, shadowConstantBuffer.GetAddressOf());
+}
+
+void ShaderManager::UpdateShadowConstants(const Matrix& world, const Matrix& viewProj)
+{
+	struct ShadowCB {
+		Matrix world;
+		Matrix viewProj;
+	};
+
+	ShadowCB cb;
+	cb.world = world.Transpose();
+	cb.viewProj = viewProj.Transpose();
+	gameContext->GetGraphicsContext()->UpdateSubresource(shadowConstantBuffer.Get(), 0, nullptr, &cb, 0, 0);
 }

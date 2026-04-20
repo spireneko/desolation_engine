@@ -21,9 +21,12 @@ class GameComponent {
 	virtual ~GameComponent() = default;
 
 	void SetVelocity(const Vector3& vel);
+
 	void SetAngularVelocity(const Vector3& angVel);
 	void SetRotation(const Quaternion& rot);
 	Quaternion GetRotation() const;
+	void Rotate(float yawDegrees, float pitchDegrees, float rollDegrees);
+
 	void SetBoundingRadius(float radius);
 	float GetBoundingRadius() const;
 

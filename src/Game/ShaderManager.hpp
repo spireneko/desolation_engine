@@ -28,6 +28,9 @@ class ShaderManager {
 	void Apply();
 	void UpdateConstants(const void* data);
 
+	void ApplyShadow();
+	void UpdateShadowConstants(const Matrix& world, const Matrix& viewProj);
+
    private:
 	bool CompileShaders();
 
@@ -38,6 +41,10 @@ class ShaderManager {
 	ComPtr<ID3D11InputLayout> inputLayout;
 	ComPtr<ID3D11Buffer> constantBuffer;
 	ComPtr<ID3D11SamplerState> samplerState;
+
+	ComPtr<ID3D11VertexShader> shadowVertexShader;
+	ComPtr<ID3D11PixelShader> shadowPixelShader;
+	ComPtr<ID3D11Buffer> shadowConstantBuffer;
 
 	std::vector<BYTE> vsBlob;
 	std::vector<BYTE> psBlob;

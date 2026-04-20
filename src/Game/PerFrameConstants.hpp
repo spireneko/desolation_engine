@@ -22,4 +22,6 @@ struct PerFrameConstants {
 	LightData::PointLight pointLights[16];
 
 	Material material;
+
+	LightData::ShadowConstants shadowData;
 };

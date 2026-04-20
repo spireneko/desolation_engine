@@ -27,6 +27,7 @@ class Mesh {
 	~Mesh();
 
 	bool CreateCube(GameContext* context);
+	void CreatePlane(GameContext* context);
 	bool CreateSphere(GameContext* context, int slices = 16, int stacks = 16);
 	bool CreateGrid(
 		GameContext* context, float size = 100.0f, int divisions = 20, const Vector4& color = Colors::LightGray

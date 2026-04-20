@@ -30,6 +30,7 @@ bool Engine::Initialize(const char* title, int w, int h)
 	shaders = std::make_unique<ShaderManager>(this);
 
 	lightManager = std::make_unique<LightManager>();
+	lightManager->Initialize(graphics->GetDevice());
 
 	// Input Manager
 	inputManager = std::make_unique<InputManager>();
@@ -143,10 +144,7 @@ void Engine::DrawComponent(const std::shared_ptr<GameComponent>& component, cons
 
 	constants.cameraPosition = fixedCamera->position;
 
-	constants.dirLight.direction = Vector3(1.3, -1.0, 0.2);
-	constants.dirLight.direction.Normalize();
-	constants.dirLight.color = Vector3(1.0, 1.0, 1.0);
-	constants.dirLight.intensity = 1.0;
+	constants.dirLight = lightManager->GetDirectionalLight();
 
 	lightManager->PrepareLights(constants, fixedCamera->position);
 
@@ -158,8 +156,12 @@ void Engine::DrawComponent(const std::shared_ptr<GameComponent>& component, cons
 		constants.world = world.Transpose();
 		constants.material = current->GetMaterial();
 
+		constants.shadowData = lightManager->GetShadowConstants();
+
 		shaders->Apply();
 		shaders->UpdateConstants(&constants);
+
+		lightManager->BindShadowMap(GetGraphicsContext(), 1);
 
 		current->Draw();
 		for (auto& child : current->GetChildren()) {
@@ -170,10 +172,25 @@ void Engine::DrawComponent(const std::shared_ptr<GameComponent>& component, cons
 
 void Engine::Render()
 {
-	graphics->BeginFrame(Colors::DarkGray);
-
+	// Shadow pass
 	Matrix view = fixedCamera->GetViewMatrix();
 	Matrix proj = fixedCamera->GetProjectionMatrix();
+
+	lightManager->RenderShadowCascades(
+		graphics->GetContext(),
+		this,
+		shaders.get(),
+		gameComponents,
+		lightManager->GetDirectionalLight().direction,
+		view,
+		fixedCamera->GetFOVRadians(),
+		fixedCamera->GetAspectRatio(),
+		fixedCamera->GetNearPlane(),
+		fixedCamera->GetFarPlane()
+	);
+
+	// Main pass
+	graphics->BeginFrame(Colors::DarkGray);
 
 	for (auto& component : gameComponents) {
 		if (!component->GetParent()) {
