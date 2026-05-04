@@ -23,5 +23,5 @@ class CameraComponent : public GameComponent {
 	float fovRadians = DirectX::XMConvertToRadians(60.0);
 	float aspectRatio = 16.0 / 9.0;
 	float nearPlane = 0.1;
-	float farPlane = 1000.0;
+	float farPlane = 300.0;
 };

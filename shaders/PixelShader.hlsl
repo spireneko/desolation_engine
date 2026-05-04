@@ -103,8 +103,18 @@ float SampleShadowPCF(float3 shadowCoord, int cascadeIndex, ShadowConstants shad
     return result / 9.0;
 }
 
-float CalculateShadow(float3 worldPos, float3 normal, float viewDepth, ShadowConstants shadow, float3 lightDir) {
+float4 CalculateShadow(float3 worldPos, float3 normal, float viewDepth, ShadowConstants shadow, float3 lightDir) {
      int cascadeIndex = GetCascadeIndex(viewDepth, shadow);
+
+    float3 debugColor = float3(1, 0, 1);
+    if (cascadeIndex == 0) {
+        debugColor = float3(1, 0, 0);
+    } else if (cascadeIndex == 1) {
+        debugColor = float3(0, 1, 0);
+    } else if (cascadeIndex == 2) {
+        debugColor = float3(0, 0, 1);
+    }
+
     float4 shadowCoord = mul(float4(worldPos, 1.0), shadow.cascades[cascadeIndex].viewProj);
     shadowCoord.xyz /= shadowCoord.w;
 
@@ -113,13 +123,13 @@ float CalculateShadow(float3 worldPos, float3 normal, float viewDepth, ShadowCon
 
     float shadowZ = shadowCoord.z;
 
-    float bias = max(0.005 * (1.0 - dot(normal, -lightDir)), 0.0005);
+    float bias = max(shadow.bias * (1.0 - saturate(dot(normal, -lightDir))), 0.0005);
 
     if (any(shadowUV < 0.0) || any(shadowUV > 1.0) || shadowZ < 0.0 || shadowZ > 1.0) {
-        return 1.0;
+        return float4(1.0, debugColor);
     }
 
-    return SampleShadowPCF(float3(shadowUV, shadowZ), cascadeIndex, shadow, bias);
+    return float4(SampleShadowPCF(float3(shadowUV, shadowZ), cascadeIndex, shadow, bias), debugColor);
 }
 
 float3 CalcDirLight(DirectionalLight light, float3 normal, float3 viewDir, Material mat, float shadow) {
@@ -158,7 +168,9 @@ float4 main(PS_INPUT input) : SV_Target {
     float3 normal = normalize(input.normal);
     float3 viewDir = normalize(cameraPosition - input.worldPos);
 
-    float shadow = CalculateShadow(input.worldPos, normal, input.viewDepth, shadowData, light.direction);
+    float4 shadowWithDebug = CalculateShadow(input.worldPos, normal, input.viewDepth, shadowData, light.direction);
+    float shadow = shadowWithDebug.x;
+    float3 debugColor = shadowWithDebug.yzw;
 
     float3 lighting = CalcDirLight(light, normal, viewDir, material, shadow);
 
@@ -168,5 +180,6 @@ float4 main(PS_INPUT input) : SV_Target {
 
     float4 texColor = diffuseTexture.Sample(samplerState, input.uv);
 
+    // return float4(lighting + debugColor * 0.1 , 1.0) * texColor * input.color;
     return float4(lighting, 1.0) * texColor * input.color;
 }

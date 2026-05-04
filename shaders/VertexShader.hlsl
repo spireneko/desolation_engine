@@ -83,7 +83,7 @@ PS_INPUT main(VS_INPUT input) {
     output.worldPos = worldPos.xyz;
 
     float4 viewPos = mul(worldPos, view);
-    output.viewDepth = viewPos.z;
+    output.viewDepth = -viewPos.z;
 
     output.pos = mul(viewPos, projection);
 

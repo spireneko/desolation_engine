@@ -18,7 +18,7 @@ LightManager::LightManager()
 void LightManager::Initialize(ID3D11Device* device)
 {
 	shadowMap = std::make_unique<ShadowMap>(device, SHADOW_MAP_SIZE, SHADOW_MAP_SIZE, CASCADE_COUNT);
-	cascadeSplits = {0.05f, 0.2f, 1.0f};
+	cascadeSplits = {0.10f, 0.25f, 1.0f};
 
 	shadowConstants.cascadeCount = CASCADE_COUNT;
 	shadowConstants.shadowMapSize = static_cast<float>(SHADOW_MAP_SIZE);
@@ -135,6 +135,7 @@ std::vector<Matrix> LightManager::CalculateCascadeMatrices(
 		float splitNear = prevSplit;
 		float splitFar = nearPlane + (farPlane - nearPlane) * split;
 
+		// 1. Строим суб-фрустум для текущего каскада
 		Matrix subProj = Matrix::CreatePerspectiveFieldOfView(fovRadians, aspect, splitNear, splitFar);
 		Matrix invSub = (cameraView * subProj).Invert();
 
@@ -142,44 +143,74 @@ std::vector<Matrix> LightManager::CalculateCascadeMatrices(
 		for (int j = 0; j < 8; ++j) {
 			float x = (j & 1) ? 1.0f : -1.0f;
 			float y = (j & 2) ? 1.0f : -1.0f;
-			float z = (j & 4) ? 1.0f : 0.0f;
+			float z = (j & 4) ? 1.0f : 0.0f;  // 0 = near, 1 = far в NDC
 
 			Vector4 worldPos = Vector4::Transform(Vector4(x, y, z, 1.0f), invSub);
 			frustumCorners[j] = Vector3(worldPos.x / worldPos.w, worldPos.y / worldPos.w, worldPos.z / worldPos.w);
 		}
 
+		// 2. Центр фрустума (для позиции источника света)
 		Vector3 center = Vector3::Zero;
 		for (int j = 0; j < 8; ++j) {
 			center += frustumCorners[j];
 		}
 		center /= 8.0f;
 
-		float radius = 0.0f;
+		// 3. === AABB ПОДХОД ===
+		// Строим временную матрицу вида света (look at center from light direction)
+		Vector3 lightPos = center - lightDir * 100.0f;	// Временная позиция, далеко от центра
+		Matrix tempLightView = Matrix::CreateLookAt(lightPos, center, Vector3::Up);
+
+		// Трансформируем все углы фрустума в пространство света
+		float minX = FLT_MAX, maxX = -FLT_MAX;
+		float minY = FLT_MAX, maxY = -FLT_MAX;
+		float minZ = FLT_MAX, maxZ = -FLT_MAX;
+
 		for (int j = 0; j < 8; ++j) {
-			float dist = Vector3::Distance(frustumCorners[j], center);
-			if (dist > radius) {
-				radius = dist;
-			}
+			Vector3 ls = Vector3::Transform(frustumCorners[j], tempLightView);
+			minX = std::min(minX, ls.x);
+			maxX = std::max(maxX, ls.x);
+			minY = std::min(minY, ls.y);
+			maxY = std::max(maxY, ls.y);
+			minZ = std::min(minZ, ls.z);
+			maxZ = std::max(maxZ, ls.z);
 		}
 
-		float texelSize = (radius * 2.0f) / SHADOW_MAP_SIZE;
-		Vector3 lightPos = center - lightDir * radius * 2.0f;
+		// 4. Делаем проекцию КВАДРАТНОЙ (берём максимум из ширины/высоты)
+		float width = maxX - minX;
+		float height = maxY - minY;
+		float maxSize = std::max(width, height);
 
-		Matrix lightView = Matrix::CreateLookAt(lightPos, center, Vector3::Up);
-		Vector3 centerLightView = Vector3::Transform(center, lightView);
+		// 5. Texel snapping (критично для стабильности теней!)
+		float texelSize = maxSize / SHADOW_MAP_SIZE;
 
-		centerLightView.x = std::floor(centerLightView.x / texelSize) * texelSize;
-		centerLightView.y = std::floor(centerLightView.y / texelSize) * texelSize;
+		Vector3 centerLightSpace;
+		centerLightSpace.x = (minX + maxX) * 0.5f;
+		centerLightSpace.y = (minY + maxY) * 0.5f;
+		centerLightSpace.z = (minZ + maxZ) * 0.5f;
 
-		Matrix invLightView = lightView.Invert();
-		center = Vector3::Transform(centerLightView, invLightView);
+		// Снаппим центр к сетке texel'ов
+		centerLightSpace.x = std::floor(centerLightSpace.x / texelSize) * texelSize;
+		centerLightSpace.y = std::floor(centerLightSpace.y / texelSize) * texelSize;
 
-		lightPos = center - lightDir * radius * 2.0f;
-		lightView = Matrix::CreateLookAt(lightPos, center, Vector3::Up);
+		// Пересчитываем bounds с учётом снаппинга
+		minX = centerLightSpace.x - maxSize * 0.5f;
+		maxX = centerLightSpace.x + maxSize * 0.5f;
+		minY = centerLightSpace.y - maxSize * 0.5f;
+		maxY = centerLightSpace.y + maxSize * 0.5f;
 
-		float dist = radius * 2.0f;
-		Matrix lightProj = Matrix::CreateOrthographic(radius * 2.0f, radius * 2.0f, dist - radius, dist + radius);
+		// 6. Финальная матрица вида света (из снаппленного центра)
+		Vector3 finalCenter = Vector3::Transform(centerLightSpace, tempLightView.Invert());
+		Vector3 finalLightPos = finalCenter - lightDir * std::max(maxZ - minZ, maxSize);
 
+		Matrix lightView = Matrix::CreateLookAt(finalLightPos, finalCenter, Vector3::Up);
+
+		// 7. Orthographic off-center проекция (оптимально использует texel'ы)
+		Matrix lightProj = Matrix::CreateOrthographicOffCenter(
+			minX, maxX, minY, maxY, 0.0f, maxZ - minZ + maxSize	 // near/far с запасом
+		);
+
+		// 8. Сохраняем матрицу
 		matrices.push_back(lightView * lightProj);
 		shadowConstants.cascades[i].viewProj = matrices.back().Transpose();
 		shadowConstants.cascades[i].splitDistance = splitFar;
