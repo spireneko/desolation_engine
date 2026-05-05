@@ -2,6 +2,7 @@
 
 #include <d3d11.h>
 
+#include "Graphics.hpp"
 #include "InputManager.hpp"
 #include "LightManager.hpp"
 
@@ -14,4 +15,6 @@ class GameContext {
 	virtual ID3D11Device* GetGraphicsDevice() = 0;
 	virtual LightManager* GetLightManager() = 0;
 	virtual InputManager* GetInputManager() = 0;
+	virtual ShaderManager* GetShaderManager() = 0;
+	virtual Graphics* GetGraphics() = 0;
 };

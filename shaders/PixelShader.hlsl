@@ -52,8 +52,8 @@ struct ShadowConstants {
     float bias;
 };
 
-cbuffer ConstantBuffer : register(b0) {
-    matrix world, view, projection;
+cbuffer PerFrameConstants : register(b0) {
+    matrix view, projection;
 
     float3 cameraPosition;
     int pointLightCount;
@@ -61,10 +61,14 @@ cbuffer ConstantBuffer : register(b0) {
     DirectionalLight light;
 
     PointLight pointLights[16];
+    
+    ShadowConstants shadowData;
+};
+
+cbuffer PerObjectConstants : register(b1) {
+    matrix world;
 
     Material material;
-
-    ShadowConstants shadowData;
 };
 
 struct PS_INPUT {

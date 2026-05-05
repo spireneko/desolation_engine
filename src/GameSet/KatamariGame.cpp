@@ -1,7 +1,9 @@
 #include "KatamariGame.hpp"
-#include "KatamariBallComponent.hpp"
-#include "Mesh.hpp"
-#include "Texture.hpp"
+
+#include "Game/KatamariBallComponent.hpp"
+#include "Game/Mesh.hpp"
+#include "Game/PointLight.hpp"
+#include "Game/Texture.hpp"
 
 #include <memory>
 #include <string>
@@ -26,8 +28,8 @@ static std::shared_ptr<GameComponent> CreateTexturedObj(
 	return object;
 }
 
-std::vector<std::shared_ptr<GameComponent>> CreateKatamariGame(
-	GameContext* ctx, std::shared_ptr<KatamariBallComponent>& outBall
+std::pair<std::vector<std::shared_ptr<GameComponent>>, std::shared_ptr<OrbitalCamera>> CreateKatamariGame(
+	GameContext* ctx
 )
 {
 	std::vector<std::shared_ptr<GameComponent>> components;
@@ -39,6 +41,9 @@ std::vector<std::shared_ptr<GameComponent>> CreateKatamariGame(
 	// gridMesh->CreateGrid(ctx, 120.0f, 24, Colors::LightGray);
 	// grid->SetMesh(std::move(gridMesh));
 	// components.push_back(grid);
+
+	auto camera = std::make_shared<OrbitalCamera>(ctx, 20, Vector3(0, 0, 0));
+	components.push_back(camera);
 
 	// Floor
 	auto grassTexture = std::make_shared<Texture>();
@@ -60,7 +65,8 @@ std::vector<std::shared_ptr<GameComponent>> CreateKatamariGame(
 	}
 
 	// Ball
-	outBall = std::make_shared<KatamariBallComponent>(ctx);
+	auto outBall = std::make_shared<KatamariBallComponent>(ctx);
+	outBall->SetCamera(camera.get());
 	outBall->scale = Vector3(2.5, 2.5, 2.5);
 	outBall->position.y = outBall->GetBoundingRadius();
 
@@ -180,8 +186,20 @@ std::vector<std::shared_ptr<GameComponent>> CreateKatamariGame(
 		stickables.push_back(sword);
 	}
 
-	outBall->SetWorldObjects(stickables);
-	outBall->SetCamera(nullptr);
+	LightData::PointLight spotLightData;
+	spotLightData.position = Vector3(15.0f, 5.0f, 0.0f);
+	spotLightData.intensity = 3.0f;
+	spotLightData.color = Vector3(1.0f, 0.7f, 0.3f);
+	spotLightData.range = 15.0f;
+	spotLightData.constant = 1.0f;
+	spotLightData.linear = 0.14f;
+	spotLightData.quadratic = 0.07f;
+	spotLightData.padding0 = 0.0f;
 
-	return components;
+	auto spotLight = PointLight::Create(ctx, spotLightData);
+	components.push_back(spotLight);
+
+	outBall->SetWorldObjects(stickables);
+
+	return std::make_pair(components, camera);
 }

@@ -6,15 +6,12 @@
 #include <memory>
 #include <vector>
 
-#include "../GameSet/Planets.hpp"
 #include "Colors.hpp"
 #include "GameComponent.hpp"
 #include "GameContext.hpp"
 #include "Graphics.hpp"
-#include "KatamariBallComponent.hpp"
-#include "KatamariGame.hpp"
 #include "Mesh.hpp"
-#include "OrbitalCamera.hpp"
+#include "RenderingSystem.hpp"
 #include "ShaderManager.hpp"
 
 class Engine : public GameContext {
@@ -30,24 +27,25 @@ class Engine : public GameContext {
 	ID3D11Device* GetGraphicsDevice() override;
 	LightManager* GetLightManager() override;
 	InputManager* GetInputManager() override;
+	ShaderManager* GetShaderManager() override;
+	Graphics* GetGraphics() override;
 
    private:
 	void ProcessEvents();
 	void Update(float deltaTime);
 	void UpdateComponent(const std::shared_ptr<GameComponent>& component, float deltaTime);
 	void Render();
-	void DrawComponent(const std::shared_ptr<GameComponent>& component, const Matrix& view, const Matrix& proj);
 
 	SDL_Window* window = nullptr;
 	bool running = false;
 
 	std::vector<std::shared_ptr<GameComponent>> gameComponents;
+	std::shared_ptr<CameraComponent> currentCamera;
 
 	std::unique_ptr<Graphics> graphics;
-	std::shared_ptr<OrbitalCamera> fixedCamera;
-	std::shared_ptr<KatamariBallComponent> ball;
 	std::unique_ptr<ShaderManager> shaders;
 	std::unique_ptr<LightManager> lightManager;
+	std::unique_ptr<RenderingSystem> renderingSystem;
 	std::unique_ptr<InputManager> inputManager;
 
 	int width, height;

@@ -1,5 +1,11 @@
 #include "Engine.hpp"
 
+#include "FPSCamera.hpp"
+#include "GameSet/DebugScene.hpp"
+#include "GameSet/KatamariGame.hpp"
+#include "GameSet/Planets.hpp"
+#include "OrbitalCamera.hpp"
+
 bool Engine::Initialize(const char* title, int w, int h)
 {
 	width = w;
@@ -32,19 +38,23 @@ bool Engine::Initialize(const char* title, int w, int h)
 	lightManager = std::make_unique<LightManager>();
 	lightManager->Initialize(graphics->GetDevice());
 
+	renderingSystem = std::make_unique<RenderingSystem>(this);
+	if (!renderingSystem->Initialize(width, height)) {
+		std::cerr << "Failed to initialize rendering system" << std::endl;
+		return false;
+	}
+
 	// Input Manager
 	inputManager = std::make_unique<InputManager>();
 
 	// Непосредственно игра, состоящая из набора объектов
-	gameComponents = CreateKatamariGame(this, ball);
+	auto gameData = CreateKatamariGame(this);
+	// auto gameData = CreateDebugScene(this);
+	gameComponents = gameData.first;
+	currentCamera = gameData.second;
 
-	fixedCamera = std::make_shared<OrbitalCamera>(this, 20, Vector3(0, 0, 0));
-	fixedCamera->SetAspectRatio(static_cast<float>(width) / height);
-	fixedCamera->isActive = true;
-	if (ball) {
-		ball->SetCamera(fixedCamera.get());
-	}
-	gameComponents.push_back(fixedCamera);
+	currentCamera->SetAspectRatio(static_cast<float>(width) / height);
+	currentCamera->isActive = true;
 
 	running = true;
 	return true;
@@ -78,7 +88,7 @@ void Engine::ProcessEvents()
 			}
 			case SDL_EVENT_WINDOW_RESIZED: {
 				graphics->Resize(e.window.data1, e.window.data2);
-				fixedCamera->SetAspectRatio(static_cast<float>(e.window.data1) / e.window.data2);
+				currentCamera->SetAspectRatio(static_cast<float>(e.window.data1) / e.window.data2);
 				break;
 			}
 			case SDL_EVENT_KEY_DOWN: {
@@ -132,77 +142,17 @@ void Engine::UpdateComponent(const std::shared_ptr<GameComponent>& component, fl
 	}
 }
 
-void Engine::DrawComponent(const std::shared_ptr<GameComponent>& component, const Matrix& view, const Matrix& proj)
-{
-	std::deque<std::shared_ptr<GameComponent>> queue;
-	queue.push_back(component);
-
-	PerFrameConstants constants;
-
-	constants.view = view.Transpose();
-	constants.projection = proj.Transpose();
-
-	constants.cameraPosition = fixedCamera->position;
-
-	constants.dirLight = lightManager->GetDirectionalLight();
-
-	lightManager->PrepareLights(constants, fixedCamera->position);
-
-	while (!queue.empty()) {
-		auto current = queue.front();
-		queue.pop_front();
-
-		Matrix world = current->GetWorldMatrix();
-		constants.world = world.Transpose();
-		constants.material = current->GetMaterial();
-
-		constants.shadowData = lightManager->GetShadowConstants();
-
-		shaders->Apply();
-		shaders->UpdateConstants(&constants);
-
-		lightManager->BindShadowMap(GetGraphicsContext(), 1);
-
-		current->Draw();
-		for (auto& child : current->GetChildren()) {
-			queue.push_back(child);
-		}
-	}
-}
-
 void Engine::Render()
 {
-	// Shadow pass
-	Matrix view = fixedCamera->GetViewMatrix();
-	Matrix proj = fixedCamera->GetProjectionMatrix();
-
-	lightManager->RenderShadowCascades(
-		graphics->GetContext(),
-		this,
-		shaders.get(),
-		gameComponents,
-		lightManager->GetDirectionalLight().direction,
-		view,
-		fixedCamera->GetFOVRadians(),
-		fixedCamera->GetAspectRatio(),
-		fixedCamera->GetNearPlane(),
-		fixedCamera->GetFarPlane()
-	);
-
-	// Main pass
-	graphics->BeginFrame(Colors::DarkGray);
-
-	for (auto& component : gameComponents) {
-		if (!component->GetParent()) {
-			DrawComponent(component, view, proj);
-		}
-	}
+	renderingSystem->RenderFrame(gameComponents, currentCamera.get(), lightManager.get());
 
 	graphics->EndFrame();
 }
 
 void Engine::Shutdown()
 {
+	renderingSystem->Shutdown();
+	renderingSystem.reset();
 	shaders.reset();
 	graphics.reset();
 
@@ -231,4 +181,14 @@ LightManager* Engine::GetLightManager()
 InputManager* Engine::GetInputManager()
 {
 	return inputManager.get();
+}
+
+ShaderManager* Engine::GetShaderManager()
+{
+	return shaders.get();
+}
+
+Graphics* Engine::GetGraphics()
+{
+	return graphics.get();
 }

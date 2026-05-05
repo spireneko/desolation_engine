@@ -8,8 +8,6 @@
 using namespace DirectX::SimpleMath;
 
 struct PerFrameConstants {
-	Matrix world;
-
 	Matrix view;
 
 	Matrix projection;
@@ -21,7 +19,11 @@ struct PerFrameConstants {
 
 	LightData::PointLight pointLights[16];
 
-	Material material;
-
 	LightData::ShadowConstants shadowData;
+};
+
+struct PerObjectConstants {
+	Matrix world;
+
+	Material material;
 };

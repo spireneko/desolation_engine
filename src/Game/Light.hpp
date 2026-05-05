@@ -26,6 +26,24 @@ struct PointLight {
 	float padding0;
 };
 
+struct SpotLight {
+	Vector3 position;
+	float intensity;
+
+	Vector3 color;
+	float range;
+
+	Vector3 direction;
+	float innerAngle;  // cos(innerAngle)
+
+	float outerAngle;  // cos(outerAngle)
+	float constant;
+	float linear;
+	float quadratic;
+
+	float pad;
+};
+
 struct CascadeData {
 	Matrix viewProj;
 
@@ -42,3 +60,37 @@ struct ShadowConstants {
 	float bias;
 };
 }  // namespace LightData
+
+struct LightingConstants {
+	Vector3 cameraPosition;
+	int cascadeCount;
+	LightData::DirectionalLight dirLight;
+	Matrix invViewProj;
+	LightData::ShadowConstants shadowData;
+	Vector2 screenSize;
+	Vector2 pad;
+};
+
+struct PointLightConstants {
+	LightData::PointLight pointLight;
+	Matrix invViewProj;
+	Vector3 cameraPosition;
+	float pad;
+};
+
+struct SpotLightConstants {
+	Vector3 position;
+	float intensity;
+	Vector3 color;
+	float range;
+	Vector3 direction;
+	float innerAngle;
+	float outerAngle;
+	float constant;
+	float linearAttenuation;
+	float quadratic;
+	float pad[3];
+	Matrix invViewProj;
+	Vector3 cameraPosition;
+	float pad2;
+};
