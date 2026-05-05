@@ -137,8 +137,7 @@ void Mesh::CreatePlane(GameContext* context)
 	};
 
 	const Vector3 normals[] = {
-		{0, 1, -1},
-		{0, 1, 1},
+		{0, 1, 0},
 	};
 
 	const Vector2 uvs[] = {{0, 1}, {1, 1}, {1, 0}, {0, 0}};
