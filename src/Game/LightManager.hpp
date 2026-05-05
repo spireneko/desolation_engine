@@ -44,6 +44,8 @@ class LightManager {
 
 	size_t GetActiveLightCount() const { return activeLights.size(); }
 
+	const std::vector<LightData::PointLight>& GetCachedLights() const { return cachedLights; }
+
    private:
 	struct LightEntry {
 		std::weak_ptr<PointLight> component;

@@ -59,6 +59,16 @@ std::pair<std::vector<std::shared_ptr<GameComponent>>, std::shared_ptr<OrbitalCa
 	floor->scale = Vector3(120.0f, 1.0f, 120.0f);
 	components.push_back(floor);
 
+	auto miniFloor = std::make_shared<GameComponent>(ctx);
+	auto miniFloorMesh = std::make_unique<Mesh>();
+	miniFloorMesh->CreatePlane(ctx);
+	miniFloorMesh->SetTexture(grassTexture);
+	miniFloor->SetMesh(std::move(miniFloorMesh));
+	miniFloor->position.y = 3.5f;
+	miniFloor->scale = Vector3(5, 1, 5);
+	miniFloor->Rotate(0, 180, 0);
+	components.push_back(miniFloor);
+
 	auto pickTexture = std::make_shared<Texture>();
 	if (!pickTexture->LoadFromFile(ctx, L"assets/textures/Alice guitar pick_BaseColor.png")) {
 		pickTexture = Texture::CreateWhite(ctx);
@@ -187,16 +197,16 @@ std::pair<std::vector<std::shared_ptr<GameComponent>>, std::shared_ptr<OrbitalCa
 	}
 
 	LightData::PointLight spotLightData;
-	spotLightData.position = Vector3(15.0f, 5.0f, 0.0f);
 	spotLightData.intensity = 3.0f;
 	spotLightData.color = Vector3(1.0f, 0.7f, 0.3f);
-	spotLightData.range = 15.0f;
+	spotLightData.range = 25.0f;
 	spotLightData.constant = 1.0f;
 	spotLightData.linear = 0.14f;
 	spotLightData.quadratic = 0.07f;
 	spotLightData.padding0 = 0.0f;
 
 	auto spotLight = PointLight::Create(ctx, spotLightData);
+	spotLight->position = Vector3(0.0f, 1.0f, 0.0f);
 	components.push_back(spotLight);
 
 	outBall->SetWorldObjects(stickables);

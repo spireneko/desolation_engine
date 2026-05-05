@@ -213,19 +213,18 @@ void RenderingSystem::ExecuteDeferredLighting(CameraComponent* camera, LightMana
 
 	// Point lights (additive)
 	ctx->OMSetBlendState(additiveBlendState.Get(), nullptr, 0xFFFFFFFF);
-	ctx->OMSetDepthStencilState(volumeDSS.Get(), 0);
-	ctx->RSSetState(volumeRS.Get());
+	ctx->OMSetDepthStencilState(lightingDSS.Get(), 0);
+	// ctx->RSSetState(volumeRS.Get());
 
-	std::vector<LightData::PointLight> pointLights;
-	// Extract from lightManager...
+	const auto& pointLights = lightManager->GetCachedLights();
 	ExecutePointLights(pointLights, litConstants.invViewProj, camera->position);
 
 	// Spot lights (additive)
 	// ExecuteSpotLights(...);
 
 	// Cleanup SRVs to avoid D3D11 warnings
-	ID3D11ShaderResourceView* nullsrvs[5] = {nullptr};
-	ctx->PSSetShaderResources(0, 5, nullsrvs);
+	ID3D11ShaderResourceView* nullsrvs[6] = {nullptr};
+	ctx->PSSetShaderResources(0, 6, nullsrvs);
 
 	// Restore states
 	ctx->RSSetState(nullptr);
@@ -250,9 +249,7 @@ void RenderingSystem::ExecutePointLights(
 
 		shaders->UpdateConstants(ShaderManager::PassType::DeferredPoint, &pc, sizeof(pc));
 
-		// Render light volume (sphere at light position with radius = range)
-		// For now, use fullscreen quad as fallback, or implement sphere rendering
-		fsQuad->Draw(ctx);	// Fallback: full screen with discard in shader
+		fsQuad->Draw(ctx);
 	}
 }
 

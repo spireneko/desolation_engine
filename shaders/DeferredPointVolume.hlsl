@@ -17,7 +17,6 @@ cbuffer PointLightConstants : register(b0) {
 struct PS_INPUT {
     float4 pos : SV_POSITION;
     float2 uv : TEXCOORD;
-    float3 viewRay : TEXCOORD1;
 };
 
 float3 ReconstructWorldPosition(float2 uv, float depth, matrix invViewProj) {
@@ -37,18 +36,23 @@ float4 main(PS_INPUT input) : SV_TARGET {
     float3 normal = normalize(normalRoughness.rgb * 2.0 - 1.0);
     float roughness = normalRoughness.a;
 
+    // Early out: no geometry here
+    if (depth >= 1.0) discard;
+
     float3 worldPos = ReconstructWorldPosition(input.uv, depth, invViewProj);
 
     float3 lightDir = pointLight.position - worldPos;
     float distance = length(lightDir);
     lightDir /= distance;
 
+    if (distance > pointLight.range) discard;
+
     // Attenuation
     float att = 1.0 / (pointLight.constant + pointLight.linearAttenuation * distance + pointLight.quadratic * distance * distance);
     float rangeFactor = saturate(1.0 - (distance / pointLight.range));
-    att *= rangeFactor;
+    att *= rangeFactor * rangeFactor;  // Smooth falloff
 
-    if (distance > pointLight.range) discard;
+    if (att < 0.001) discard;
 
     float NdotL = max(dot(normal, lightDir), 0.0);
 
