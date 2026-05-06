@@ -8,6 +8,15 @@ void GameComponent::SetVelocity(const Vector3& vel)
 	if (velocity.LengthSquared() > 0.0f) {
 		velocity.Normalize();
 	}
+
+	material = {
+		Vector3(0.2, 0.2, 0.2),	 // ambient
+		0.0,					 // padding
+		Vector3(0.5, 0.5, 0.5),	 // diffuse
+		0.0,					 // padding
+		Vector3(0.3, 0.3, 0.3),	 // specular
+		32.0,					 // shininess
+	};
 }
 
 void GameComponent::SetAngularVelocity(const Vector3& angVel)

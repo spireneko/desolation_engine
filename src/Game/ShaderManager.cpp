@@ -41,11 +41,16 @@ ShaderManager::ShaderManager(GameContext* ctx) : gameContext(ctx)
 	);
 
 	// Deferred point volume
+	D3D11_INPUT_ELEMENT_DESC volumeLayout[] = {
+		{"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0}
+	};
 	CreatePass(
 		PassType::DeferredPoint,
-		L"shaders/PointVolumeVS.hlsl",
+		L"shaders/PointVolumeSphereVS.hlsl",
 		L"shaders/DeferredPointVolume.hlsl",
-		sizeof(PointLightConstants)
+		sizeof(PointLightConstants),
+		volumeLayout,
+		1
 	);
 
 	// Deferred spot volume

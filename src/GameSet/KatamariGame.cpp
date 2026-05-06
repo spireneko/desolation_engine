@@ -57,6 +57,9 @@ std::pair<std::vector<std::shared_ptr<GameComponent>>, std::shared_ptr<OrbitalCa
 	floorMesh->SetTexture(grassTexture);
 	floor->SetMesh(std::move(floorMesh));
 	floor->scale = Vector3(120.0f, 1.0f, 120.0f);
+	auto floorMat = floor->GetMaterial();
+	floorMat.shininess = 64;
+	floor->SetMaterial(floorMat);
 	components.push_back(floor);
 
 	auto miniFloor = std::make_shared<GameComponent>(ctx);
@@ -150,7 +153,7 @@ std::pair<std::vector<std::shared_ptr<GameComponent>>, std::shared_ptr<OrbitalCa
 		pickTexture
 	);
 	auto pickMat = pick->GetMaterial();
-	pickMat.shininess = 1 << 8;
+	pickMat.specular = Vector3(0.8f, 0.8f, 0.8f);
 	pick->SetMaterial(pickMat);
 	pick->Rotate(90, 0, 0);
 	if (pick) {

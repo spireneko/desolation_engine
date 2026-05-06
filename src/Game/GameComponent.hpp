@@ -55,14 +55,7 @@ class GameComponent {
 	Vector3 angularVelocity = Vector3(0, 0, 0);
 	float boundingRadius = 0.5f;
 
-	Material material = {
-		Vector3(0.2, 0.2, 0.2),	 // ambient
-		0.0,					 // padding
-		Vector3(0.5, 0.5, 0.5),	 // diffuse
-		0.0,					 // padding
-		Vector3(0.7, 0.7, 0.7),	 // specular
-		32.0,					 // shininess
-	};
+	Material material;
 
 	GameComponent* parent = nullptr;
 	std::vector<std::shared_ptr<GameComponent>> children;

@@ -73,9 +73,15 @@ struct LightingConstants {
 
 struct PointLightConstants {
 	LightData::PointLight pointLight;
+
 	Matrix invViewProj;
+
 	Vector3 cameraPosition;
 	float pad;
+
+	Matrix worldViewProj;
+	Vector2 screenSize;
+	Vector2 pad2;
 };
 
 struct SpotLightConstants {

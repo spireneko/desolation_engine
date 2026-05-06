@@ -9,14 +9,20 @@ SamplerState pointSampler : register(s0);
 
 cbuffer PointLightConstants : register(b0) {
     PointLight pointLight;
+
     matrix invViewProj;
+
     float3 cameraPosition;
     float pad;
+
+    matrix worldViewProj;
+
+    float2 screenSize;
+    float2 pad2;
 };
 
 struct PS_INPUT {
     float4 pos : SV_POSITION;
-    float2 uv : TEXCOORD;
 };
 
 float3 ReconstructWorldPosition(float2 uv, float depth, matrix invViewProj) {
@@ -27,9 +33,11 @@ float3 ReconstructWorldPosition(float2 uv, float depth, matrix invViewProj) {
 }
 
 float4 main(PS_INPUT input) : SV_TARGET {
-    float4 albedoMetallic = gAlbedoMetallic.Sample(pointSampler, input.uv);
-    float4 normalRoughness = gNormalRoughness.Sample(pointSampler, input.uv);
-    float depth = gDepth.Sample(pointSampler, input.uv).r;
+    float2 uv = input.pos.xy / screenSize;
+
+    float4 albedoMetallic = gAlbedoMetallic.Sample(pointSampler, uv);
+    float4 normalRoughness = gNormalRoughness.Sample(pointSampler, uv);
+    float depth = gDepth.Sample(pointSampler, uv).r;
 
     float3 albedo = albedoMetallic.rgb;
     float metallic = albedoMetallic.a;
@@ -39,7 +47,7 @@ float4 main(PS_INPUT input) : SV_TARGET {
     // Early out: no geometry here
     if (depth >= 1.0) discard;
 
-    float3 worldPos = ReconstructWorldPosition(input.uv, depth, invViewProj);
+    float3 worldPos = ReconstructWorldPosition(uv, depth, invViewProj);
 
     float3 lightDir = pointLight.position - worldPos;
     float distance = length(lightDir);

@@ -41,7 +41,8 @@ class RenderingSystem {
 	void ExecuteDeferredLighting(CameraComponent* camera, LightManager* lightManager);
 
 	void ExecutePointLights(
-		const std::vector<LightData::PointLight>& points, const Matrix& invViewProj, const Vector3& cameraPos
+		const std::vector<LightData::PointLight>& points, const Matrix& invViewProj, const Vector3& cameraPos,
+		CameraComponent* camera
 	);
 
 	void ExecuteSpotLights(
@@ -54,7 +55,7 @@ class RenderingSystem {
 
 	void DrawSceneGeometry(const std::vector<std::shared_ptr<GameComponent>>& roots, ShaderManager::PassType pass);
 
-	void DrawLightVolume(const Vector3& position, float range, const Matrix& viewProj);
+	void DrawLightVolume(ID3D11DeviceContext* ctx);
 
 	GameContext* gameContext;
 	std::unique_ptr<GBuffer> gBuffer;

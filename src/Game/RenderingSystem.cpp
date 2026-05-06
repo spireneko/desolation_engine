@@ -20,6 +20,49 @@ bool RenderingSystem::Initialize(int width, int height)
 		return false;
 	}
 
+	std::vector<Vector3> sphereVerts;
+	std::vector<uint32_t> sphereInds;
+	const int slices = 32, stacks = 32;
+
+	for (int stack = 0; stack <= stacks; ++stack) {
+		float phi = DirectX::XM_PI * stack / stacks;
+		float y = 0.5f * cosf(phi);
+		float r = 0.5f * sinf(phi);
+		for (int slice = 0; slice <= slices; ++slice) {
+			float theta = 2.0f * DirectX::XM_PI * slice / slices;
+			sphereVerts.emplace_back(r * cosf(theta), y, r * sinf(theta));
+		}
+	}
+	for (int stack = 0; stack < stacks; ++stack) {
+		int row = stack * (slices + 1);
+		int nextRow = (stack + 1) * (slices + 1);
+		for (int slice = 0; slice < slices; ++slice) {
+			sphereInds.push_back(row + slice);
+			sphereInds.push_back(nextRow + slice);
+			sphereInds.push_back(row + slice + 1);
+			sphereInds.push_back(nextRow + slice);
+			sphereInds.push_back(nextRow + slice + 1);
+			sphereInds.push_back(row + slice + 1);
+		}
+	}
+	sphereIndexCount = static_cast<UINT>(sphereInds.size());
+
+	// Vertex buffer
+	D3D11_BUFFER_DESC vbd = {};
+	vbd.Usage = D3D11_USAGE_DEFAULT;
+	vbd.ByteWidth = static_cast<UINT>(sizeof(Vector3) * sphereVerts.size());
+	vbd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+	D3D11_SUBRESOURCE_DATA vInit = {sphereVerts.data()};
+	device->CreateBuffer(&vbd, &vInit, &sphereVertexBuffer);
+
+	// Index buffer
+	D3D11_BUFFER_DESC ibd = {};
+	ibd.Usage = D3D11_USAGE_DEFAULT;
+	ibd.ByteWidth = static_cast<UINT>(sizeof(uint32_t) * sphereInds.size());
+	ibd.BindFlags = D3D11_BIND_INDEX_BUFFER;
+	D3D11_SUBRESOURCE_DATA iInit = {sphereInds.data()};
+	device->CreateBuffer(&ibd, &iInit, &sphereIndexBuffer);
+
 	// Additive blend for light accumulation
 	D3D11_BLEND_DESC blendDesc = {};
 	blendDesc.RenderTarget[0].BlendEnable = TRUE;
@@ -217,7 +260,7 @@ void RenderingSystem::ExecuteDeferredLighting(CameraComponent* camera, LightMana
 	// ctx->RSSetState(volumeRS.Get());
 
 	const auto& pointLights = lightManager->GetCachedLights();
-	ExecutePointLights(pointLights, litConstants.invViewProj, camera->position);
+	ExecutePointLights(pointLights, litConstants.invViewProj, camera->position, camera);
 
 	// Spot lights (additive)
 	// ExecuteSpotLights(...);
@@ -233,7 +276,8 @@ void RenderingSystem::ExecuteDeferredLighting(CameraComponent* camera, LightMana
 }
 
 void RenderingSystem::ExecutePointLights(
-	const std::vector<LightData::PointLight>& points, const Matrix& invViewProj, const Vector3& cameraPos
+	const std::vector<LightData::PointLight>& points, const Matrix& invViewProj, const Vector3& cameraPos,
+	CameraComponent* camera
 )
 {
 	auto ctx = gameContext->GetGraphicsContext();
@@ -241,16 +285,41 @@ void RenderingSystem::ExecutePointLights(
 
 	shaders->Apply(ShaderManager::PassType::DeferredPoint);
 
+	// Общие стейты для всех volumes
+	ctx->OMSetBlendState(additiveBlendState.Get(), nullptr, 0xFFFFFFFF);
+	ctx->OMSetDepthStencilState(volumeDSS.Get(), 0);
+
+	Matrix view = camera->GetViewMatrix();
+	Matrix proj = camera->GetProjectionMatrix();
+	Vector2 screenSize(static_cast<float>(gBuffer->GetWidth()), static_cast<float>(gBuffer->GetHeight()));
+
 	for (const auto& pl : points) {
+		// === ПРОВЕРКА: камера внутри сферы? ===
+		bool cameraInside = Vector3::Distance(cameraPos, pl.position) < pl.range;
+
+		if (cameraInside) {
+			ctx->RSSetState(nullptr);
+		} else {
+			ctx->RSSetState(volumeRS.Get());
+		}
+
+		Matrix world = Matrix::CreateScale(pl.range) * Matrix::CreateTranslation(pl.position);
+		Matrix wvp = world * view * proj;
+
 		PointLightConstants pc;
 		pc.pointLight = pl;
 		pc.invViewProj = invViewProj;
 		pc.cameraPosition = cameraPos;
+		pc.worldViewProj = wvp.Transpose();
+		pc.screenSize = screenSize;
 
 		shaders->UpdateConstants(ShaderManager::PassType::DeferredPoint, &pc, sizeof(pc));
-
-		fsQuad->Draw(ctx);
+		DrawLightVolume(ctx);
 	}
+
+	// Восстановление стейтов
+	ctx->RSSetState(nullptr);
+	ctx->OMSetDepthStencilState(nullptr, 0);
 }
 
 void RenderingSystem::DrawSceneGeometry(
@@ -284,4 +353,14 @@ void RenderingSystem::DrawSceneGeometry(
 			queue.push_back(child);
 		}
 	}
+}
+
+void RenderingSystem::DrawLightVolume(ID3D11DeviceContext* ctx)
+{
+	UINT stride = sizeof(Vector3);
+	UINT offset = 0;
+	ctx->IASetVertexBuffers(0, 1, sphereVertexBuffer.GetAddressOf(), &stride, &offset);
+	ctx->IASetIndexBuffer(sphereIndexBuffer.Get(), DXGI_FORMAT_R32_UINT, 0);
+	ctx->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	ctx->DrawIndexed(sphereIndexCount, 0, 0);
 }
