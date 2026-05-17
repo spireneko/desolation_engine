@@ -34,9 +34,9 @@ struct SpotLight {
 	float range;
 
 	Vector3 direction;
-	float innerAngle;  // cos(innerAngle)
+	float innerAngle;  // radians
 
-	float outerAngle;  // cos(outerAngle)
+	float outerAngle;  // radians
 	float constant;
 	float linear;
 	float quadratic;
@@ -87,16 +87,25 @@ struct PointLightConstants {
 struct SpotLightConstants {
 	Vector3 position;
 	float intensity;
+
 	Vector3 color;
 	float range;
+
 	Vector3 direction;
 	float innerAngle;
+
 	float outerAngle;
 	float constant;
 	float linearAttenuation;
 	float quadratic;
-	float pad[3];
+
 	Matrix invViewProj;
+
 	Vector3 cameraPosition;
 	float pad2;
+
+	Matrix worldViewProj;
+
+	Vector2 screenSize;
+	Vector2 pad3;
 };

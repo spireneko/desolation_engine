@@ -7,30 +7,22 @@ Texture2D gDepth : register(t3);
 
 SamplerState pointSampler : register(s0);
 
-struct SpotLight {
-    float3 position;
-    float intensity;
-    float3 color;
-    float range;
-    float3 direction;
-    float innerAngle;
-    float outerAngle;
-    float constant;
-    float linearAttenuation;
-    float quadratic;
-    float pad[3];
-};
-
 cbuffer SpotLightConstants : register(b0) {
     SpotLight spotLight;
+
     matrix invViewProj;
+
     float3 cameraPosition;
-    float pad;
+    float pad2;
+
+    matrix worldViewProj;
+    
+    float2 screenSize;
+    float2 pad3;
 };
 
 struct PS_INPUT {
     float4 pos : SV_POSITION;
-    float2 uv : TEXCOORD;
 };
 
 float3 ReconstructWorldPosition(float2 uv, float depth, matrix invViewProj) {
@@ -41,16 +33,21 @@ float3 ReconstructWorldPosition(float2 uv, float depth, matrix invViewProj) {
 }
 
 float4 main(PS_INPUT input) : SV_TARGET {
-    float4 albedoMetallic = gAlbedoMetallic.Sample(pointSampler, input.uv);
-    float4 normalRoughness = gNormalRoughness.Sample(pointSampler, input.uv);
-    float depth = gDepth.Sample(pointSampler, input.uv).r;
+    float2 uv = input.pos.xy / screenSize;
+
+    float4 albedoMetallic = gAlbedoMetallic.Sample(pointSampler, uv);
+    float4 normalRoughness = gNormalRoughness.Sample(pointSampler, uv);
+    float depth = gDepth.Sample(pointSampler, uv).r;
 
     float3 albedo = albedoMetallic.rgb;
     float metallic = albedoMetallic.a;
     float3 normal = normalize(normalRoughness.rgb * 2.0 - 1.0);
     float roughness = normalRoughness.a;
 
-    float3 worldPos = ReconstructWorldPosition(input.uv, depth, invViewProj);
+    // Early out: no geometry here
+    if (depth >= 1.0) discard;
+
+    float3 worldPos = ReconstructWorldPosition(uv, depth, invViewProj);
 
     float3 lightDir = spotLight.position - worldPos;
     float distance = length(lightDir);
@@ -68,6 +65,8 @@ float4 main(PS_INPUT input) : SV_TARGET {
     // Distance attenuation
     float att = 1.0 / (spotLight.constant + spotLight.linearAttenuation * distance + spotLight.quadratic * distance * distance);
     att *= spotAtt;
+
+    if (att < 0.001) discard;
 
     float NdotL = max(dot(normal, lightDir), 0.0);
 

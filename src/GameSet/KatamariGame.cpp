@@ -3,6 +3,7 @@
 #include "Game/KatamariBallComponent.hpp"
 #include "Game/Mesh.hpp"
 #include "Game/PointLight.hpp"
+#include "Game/SpotLight.hpp"
 #include "Game/Texture.hpp"
 
 #include <memory>
@@ -199,17 +200,19 @@ std::pair<std::vector<std::shared_ptr<GameComponent>>, std::shared_ptr<OrbitalCa
 		stickables.push_back(sword);
 	}
 
-	LightData::PointLight spotLightData;
+	LightData::SpotLight spotLightData;
 	spotLightData.intensity = 3.0f;
 	spotLightData.color = Vector3(1.0f, 0.7f, 0.3f);
 	spotLightData.range = 25.0f;
 	spotLightData.constant = 1.0f;
 	spotLightData.linear = 0.14f;
 	spotLightData.quadratic = 0.07f;
-	spotLightData.padding0 = 0.0f;
+	spotLightData.innerAngle = DirectX::XMConvertToRadians(30.0f);
+	spotLightData.outerAngle = DirectX::XMConvertToRadians(45.0f);
+	spotLightData.direction = Vector3(0.0f, -1.0f, 0.0f);
 
-	auto spotLight = PointLight::Create(ctx, spotLightData);
-	spotLight->position = Vector3(0.0f, 1.0f, 0.0f);
+	auto spotLight = SpotLight::Create(ctx, spotLightData);
+	spotLight->position = Vector3(-5.0f, 8.0f, -5.0f);
 	components.push_back(spotLight);
 
 	outBall->SetWorldObjects(stickables);

@@ -20,6 +20,7 @@ bool RenderingSystem::Initialize(int width, int height)
 		return false;
 	}
 
+	// Sphere for point lights
 	std::vector<Vector3> sphereVerts;
 	std::vector<uint32_t> sphereInds;
 	const int slices = 32, stacks = 32;
@@ -47,7 +48,6 @@ bool RenderingSystem::Initialize(int width, int height)
 	}
 	sphereIndexCount = static_cast<UINT>(sphereInds.size());
 
-	// Vertex buffer
 	D3D11_BUFFER_DESC vbd = {};
 	vbd.Usage = D3D11_USAGE_DEFAULT;
 	vbd.ByteWidth = static_cast<UINT>(sizeof(Vector3) * sphereVerts.size());
@@ -55,13 +55,54 @@ bool RenderingSystem::Initialize(int width, int height)
 	D3D11_SUBRESOURCE_DATA vInit = {sphereVerts.data()};
 	device->CreateBuffer(&vbd, &vInit, &sphereVertexBuffer);
 
-	// Index buffer
 	D3D11_BUFFER_DESC ibd = {};
 	ibd.Usage = D3D11_USAGE_DEFAULT;
 	ibd.ByteWidth = static_cast<UINT>(sizeof(uint32_t) * sphereInds.size());
 	ibd.BindFlags = D3D11_BIND_INDEX_BUFFER;
 	D3D11_SUBRESOURCE_DATA iInit = {sphereInds.data()};
 	device->CreateBuffer(&ibd, &iInit, &sphereIndexBuffer);
+
+	// Cone for spot lights (apex at origin, base at y=1, radius=1, pointing up +Y)
+	std::vector<Vector3> coneVerts;
+	std::vector<uint32_t> coneInds;
+	const int coneSlices = 32;
+
+	coneVerts.emplace_back(0.0f, 0.0f, 0.0f);  // apex
+	coneVerts.emplace_back(0.0f, 1.0f, 0.0f);  // base center
+
+	for (int i = 0; i <= coneSlices; ++i) {
+		float theta = 2.0f * DirectX::XM_PI * i / coneSlices;
+		coneVerts.emplace_back(cosf(theta), 1.0f, sinf(theta));
+	}
+
+	for (int i = 0; i < coneSlices; ++i) {
+		int base = 2 + i;
+		int next = 2 + ((i + 1) % coneSlices);
+		// Side (outward winding — will be rendered with front-face culling)
+		coneInds.push_back(0);
+		coneInds.push_back(next);
+		coneInds.push_back(base);
+		// Base cap
+		coneInds.push_back(1);
+		coneInds.push_back(base);
+		coneInds.push_back(next);
+	}
+
+	coneIndexCount = static_cast<UINT>(coneInds.size());
+
+	D3D11_BUFFER_DESC coneVbd = {};
+	coneVbd.Usage = D3D11_USAGE_DEFAULT;
+	coneVbd.ByteWidth = static_cast<UINT>(sizeof(Vector3) * coneVerts.size());
+	coneVbd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+	D3D11_SUBRESOURCE_DATA coneVInit = {coneVerts.data()};
+	device->CreateBuffer(&coneVbd, &coneVInit, &coneVertexBuffer);
+
+	D3D11_BUFFER_DESC coneIbd = {};
+	coneIbd.Usage = D3D11_USAGE_DEFAULT;
+	coneIbd.ByteWidth = static_cast<UINT>(sizeof(uint32_t) * coneInds.size());
+	coneIbd.BindFlags = D3D11_BIND_INDEX_BUFFER;
+	D3D11_SUBRESOURCE_DATA coneIInit = {coneInds.data()};
+	device->CreateBuffer(&coneIbd, &coneIInit, &coneIndexBuffer);
 
 	// Additive blend for light accumulation
 	D3D11_BLEND_DESC blendDesc = {};
@@ -96,10 +137,6 @@ bool RenderingSystem::Initialize(int width, int height)
 	rsDesc.DepthClipEnable = TRUE;
 	device->CreateRasterizerState(&rsDesc, &volumeRS);
 
-	// Create simple sphere for point light volumes
-	// (Simplified: use 16x16 sphere, or load from mesh)
-	// For now, we'll use a simple approach - create in code or use existing Mesh::CreateSphere
-
 	initialized = true;
 	return true;
 }
@@ -114,6 +151,10 @@ void RenderingSystem::Shutdown()
 	lightingDSS.Reset();
 	volumeDSS.Reset();
 	volumeRS.Reset();
+	sphereVertexBuffer.Reset();
+	sphereIndexBuffer.Reset();
+	coneVertexBuffer.Reset();
+	coneIndexBuffer.Reset();
 	initialized = false;
 }
 
@@ -164,9 +205,8 @@ void RenderingSystem::ExecuteShadowPass(
 )
 {
 	auto* lightManager = gameContext->GetLightManager();
-	auto* shaders = gameContext->GetShaderManager();  // Need to expose this
+	auto* shaders = gameContext->GetShaderManager();
 
-	// This delegates to LightManager's existing shadow rendering
 	lightManager->RenderShadowCascades(
 		gameContext->GetGraphicsContext(),
 		gameContext,
@@ -189,11 +229,9 @@ void RenderingSystem::ExecuteGBufferPass(
 	auto ctx = gameContext->GetGraphicsContext();
 	auto shaders = gameContext->GetShaderManager();
 
-	// Bind GBuffer
 	gBuffer->BindForGeometryPass(ctx);
 	gBuffer->Clear(ctx, Colors::DarkGray);
 
-	// Setup constants
 	PerFrameConstants constants;
 	constants.view = view.Transpose();
 	constants.projection = proj.Transpose();
@@ -205,7 +243,6 @@ void RenderingSystem::ExecuteGBufferPass(
 	shaders->Apply(ShaderManager::PassType::GBuffer);
 	shaders->UpdateConstants(ShaderManager::PassType::GBuffer, &constants, sizeof(constants));
 
-	// Draw all opaque geometry
 	for (auto& root : sceneRoots) {
 		if (!root->GetParent()) {
 			DrawSceneGeometry({root}, ShaderManager::PassType::GBuffer);
@@ -219,10 +256,8 @@ void RenderingSystem::ExecuteDeferredLighting(CameraComponent* camera, LightMana
 	auto shaders = gameContext->GetShaderManager();
 	auto graphics = gameContext->GetGraphics();
 
-	// Restore backbuffer
-	graphics->BeginFrame(Colors::Black);  // We'll accumulate light, so start black
+	graphics->BeginFrame(Colors::Black);
 
-	// Setup GBuffer SRVs
 	ID3D11ShaderResourceView* gbuffers[4] = {
 		gBuffer->GetSRV(GBuffer::Attachment::AlbedoMetallic),
 		gBuffer->GetSRV(GBuffer::Attachment::NormalRoughness),
@@ -231,10 +266,8 @@ void RenderingSystem::ExecuteDeferredLighting(CameraComponent* camera, LightMana
 	};
 	ctx->PSSetShaderResources(0, 4, gbuffers);
 
-	// Bind shadow map
 	lightManager->BindShadowMap(ctx, 4);
 
-	// Directional light (full screen)
 	LightingConstants litConstants;
 	litConstants.cameraPosition = camera->position;
 	litConstants.cascadeCount = lightManager->GetShadowConstants().cascadeCount;
@@ -248,7 +281,7 @@ void RenderingSystem::ExecuteDeferredLighting(CameraComponent* camera, LightMana
 		Vector2(static_cast<float>(gBuffer->GetWidth()), static_cast<float>(gBuffer->GetHeight()));
 
 	ctx->OMSetDepthStencilState(lightingDSS.Get(), 0);
-	ctx->OMSetBlendState(nullptr, nullptr, 0xFFFFFFFF);	 // No blending for first light
+	ctx->OMSetBlendState(nullptr, nullptr, 0xFFFFFFFF);
 
 	shaders->Apply(ShaderManager::PassType::DeferredDirectional);
 	shaders->UpdateConstants(ShaderManager::PassType::DeferredDirectional, &litConstants, sizeof(litConstants));
@@ -257,19 +290,17 @@ void RenderingSystem::ExecuteDeferredLighting(CameraComponent* camera, LightMana
 	// Point lights (additive)
 	ctx->OMSetBlendState(additiveBlendState.Get(), nullptr, 0xFFFFFFFF);
 	ctx->OMSetDepthStencilState(lightingDSS.Get(), 0);
-	// ctx->RSSetState(volumeRS.Get());
 
 	const auto& pointLights = lightManager->GetCachedLights();
 	ExecutePointLights(pointLights, litConstants.invViewProj, camera->position, camera);
 
 	// Spot lights (additive)
-	// ExecuteSpotLights(...);
+	const auto& spotLights = lightManager->GetCachedSpotLights();
+	ExecuteSpotLights(spotLights, litConstants.invViewProj, camera->position, camera);
 
-	// Cleanup SRVs to avoid D3D11 warnings
 	ID3D11ShaderResourceView* nullsrvs[6] = {nullptr};
 	ctx->PSSetShaderResources(0, 6, nullsrvs);
 
-	// Restore states
 	ctx->RSSetState(nullptr);
 	ctx->OMSetDepthStencilState(nullptr, 0);
 	ctx->OMSetBlendState(nullptr, nullptr, 0xFFFFFFFF);
@@ -285,7 +316,6 @@ void RenderingSystem::ExecutePointLights(
 
 	shaders->Apply(ShaderManager::PassType::DeferredPoint);
 
-	// Общие стейты для всех volumes
 	ctx->OMSetBlendState(additiveBlendState.Get(), nullptr, 0xFFFFFFFF);
 	ctx->OMSetDepthStencilState(volumeDSS.Get(), 0);
 
@@ -294,7 +324,6 @@ void RenderingSystem::ExecutePointLights(
 	Vector2 screenSize(static_cast<float>(gBuffer->GetWidth()), static_cast<float>(gBuffer->GetHeight()));
 
 	for (const auto& pl : points) {
-		// === ПРОВЕРКА: камера внутри сферы? ===
 		bool cameraInside = Vector3::Distance(cameraPos, pl.position) < pl.range;
 
 		if (cameraInside) {
@@ -317,7 +346,90 @@ void RenderingSystem::ExecutePointLights(
 		DrawLightVolume(ctx);
 	}
 
-	// Восстановление стейтов
+	ctx->RSSetState(nullptr);
+	ctx->OMSetDepthStencilState(nullptr, 0);
+}
+
+void RenderingSystem::ExecuteSpotLights(
+	const std::vector<LightData::SpotLight>& spots, const Matrix& invViewProj, const Vector3& cameraPos,
+	CameraComponent* camera
+)
+{
+	auto ctx = gameContext->GetGraphicsContext();
+	auto shaders = gameContext->GetShaderManager();
+
+	shaders->Apply(ShaderManager::PassType::DeferredSpot);
+
+	ctx->OMSetBlendState(additiveBlendState.Get(), nullptr, 0xFFFFFFFF);
+	ctx->OMSetDepthStencilState(volumeDSS.Get(), 0);
+
+	Matrix view = camera->GetViewMatrix();
+	Matrix proj = camera->GetProjectionMatrix();
+	Vector2 screenSize(static_cast<float>(gBuffer->GetWidth()), static_cast<float>(gBuffer->GetHeight()));
+
+	for (const auto& sl : spots) {
+		// Conservative "camera inside cone" test
+		Vector3 toCamera = cameraPos - sl.position;
+		float dist = toCamera.Length();
+		bool cameraInside = false;
+		if (dist < sl.range && dist > 0.001f) {
+			float cosAngle = (toCamera / dist).Dot(sl.direction);
+			if (cosAngle > cosf(sl.outerAngle)) {
+				cameraInside = true;
+			}
+		}
+
+		if (cameraInside) {
+			ctx->RSSetState(nullptr);
+		} else {
+			ctx->RSSetState(volumeRS.Get());
+		}
+
+		Vector3 forward = sl.direction;
+		forward.Normalize();
+
+		Vector3 up = Vector3::Up;
+		if (std::abs(up.Dot(forward)) > 0.999f) {
+			up = Vector3::Forward;
+		}
+		Vector3 right = up.Cross(forward);
+		right.Normalize();
+		up = forward.Cross(right);
+
+		// clang-format off
+		Matrix rot(
+			right.x,	right.y,	right.z, 	0.0f,
+			forward.x,	forward.y,	forward.z, 	0.0f,
+			up.x,		up.y, 		up.z,		0.0f,
+			0.0f,		0.0f,		0.0f,		1.0f
+		);
+		// clang-format on
+
+		float tanOuter = tanf(sl.outerAngle);
+		Matrix scale = Matrix::CreateScale(sl.range * tanOuter, sl.range, sl.range * tanOuter);
+		Matrix world = scale * rot * Matrix::CreateTranslation(sl.position);
+		Matrix wvp = world * view * proj;
+
+		SpotLightConstants sc = {};
+		sc.position = sl.position;
+		sc.intensity = sl.intensity;
+		sc.color = sl.color;
+		sc.range = sl.range;
+		sc.direction = sl.direction;
+		sc.innerAngle = sl.innerAngle;
+		sc.outerAngle = sl.outerAngle;
+		sc.constant = sl.constant;
+		sc.linearAttenuation = sl.linear;
+		sc.quadratic = sl.quadratic;
+		sc.invViewProj = invViewProj;
+		sc.cameraPosition = cameraPos;
+		sc.worldViewProj = wvp.Transpose();
+		sc.screenSize = screenSize;
+
+		shaders->UpdateConstants(ShaderManager::PassType::DeferredSpot, &sc, sizeof(sc));
+		DrawConeVolume(ctx);
+	}
+
 	ctx->RSSetState(nullptr);
 	ctx->OMSetDepthStencilState(nullptr, 0);
 }
@@ -343,7 +455,6 @@ void RenderingSystem::DrawSceneGeometry(
 			PerObjectConstants obj;
 			obj.world = world.Transpose();
 			obj.material = current->GetMaterial();
-			// View/Proj set outside for efficiency
 
 			shaders->UpdatePerObjectConstants(&obj, sizeof(obj));
 			current->Draw();
@@ -363,4 +474,14 @@ void RenderingSystem::DrawLightVolume(ID3D11DeviceContext* ctx)
 	ctx->IASetIndexBuffer(sphereIndexBuffer.Get(), DXGI_FORMAT_R32_UINT, 0);
 	ctx->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	ctx->DrawIndexed(sphereIndexCount, 0, 0);
+}
+
+void RenderingSystem::DrawConeVolume(ID3D11DeviceContext* ctx)
+{
+	UINT stride = sizeof(Vector3);
+	UINT offset = 0;
+	ctx->IASetVertexBuffers(0, 1, coneVertexBuffer.GetAddressOf(), &stride, &offset);
+	ctx->IASetIndexBuffer(coneIndexBuffer.Get(), DXGI_FORMAT_R32_UINT, 0);
+	ctx->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	ctx->DrawIndexed(coneIndexCount, 0, 0);
 }

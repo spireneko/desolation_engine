@@ -8,6 +8,7 @@
 #include "ShadowMap.hpp"
 
 class PointLight;
+class SpotLight;
 class ShaderManager;
 class GameContext;
 class GameComponent;
@@ -31,6 +32,9 @@ class LightManager {
 	void RegisterPointLight(std::shared_ptr<PointLight> light);
 	void UnregisterPointLight(const PointLight* light);
 
+	void RegisterSpotLight(std::shared_ptr<SpotLight> light);
+	void UnregisterSpotLight(const SpotLight* light);
+
 	void PrepareLights(PerFrameConstants& constants, const Vector3& cameraPosition);
 
 	void RenderShadowCascades(
@@ -44,7 +48,11 @@ class LightManager {
 
 	size_t GetActiveLightCount() const { return activeLights.size(); }
 
+	size_t GetActiveSpotLightCount() const { return activeSpotLights.size(); }
+
 	const std::vector<LightData::PointLight>& GetCachedLights() const { return cachedLights; }
+
+	const std::vector<LightData::SpotLight>& GetCachedSpotLights() const { return cachedSpotLights; }
 
    private:
 	struct LightEntry {
@@ -52,10 +60,18 @@ class LightManager {
 		float distanceToCamera = 0.0f;
 	};
 
+	struct SpotLightEntry {
+		std::weak_ptr<SpotLight> component;
+		float distanceToCamera = 0.0f;
+	};
+
 	LightData::DirectionalLight directionalLight;
 
 	std::vector<LightEntry> activeLights;
 	std::vector<LightData::PointLight> cachedLights;
+
+	std::vector<SpotLightEntry> activeSpotLights;
+	std::vector<LightData::SpotLight> cachedSpotLights;
 
 	std::unique_ptr<ShadowMap> shadowMap;
 	LightData::ShadowConstants shadowConstants;

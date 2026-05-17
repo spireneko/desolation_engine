@@ -46,7 +46,8 @@ class RenderingSystem {
 	);
 
 	void ExecuteSpotLights(
-		const std::vector<SpotLightConstants>& spots, const Matrix& invViewProj, const Vector3& cameraPos
+		const std::vector<LightData::SpotLight>& spots, const Matrix& invViewProj, const Vector3& cameraPos,
+		CameraComponent* camera
 	);
 
 	void ExecuteForwardPass(
@@ -54,8 +55,8 @@ class RenderingSystem {
 	);
 
 	void DrawSceneGeometry(const std::vector<std::shared_ptr<GameComponent>>& roots, ShaderManager::PassType pass);
-
 	void DrawLightVolume(ID3D11DeviceContext* ctx);
+	void DrawConeVolume(ID3D11DeviceContext* ctx);
 
 	GameContext* gameContext;
 	std::unique_ptr<GBuffer> gBuffer;
@@ -66,10 +67,14 @@ class RenderingSystem {
 	ComPtr<ID3D11DepthStencilState> volumeDSS;
 	ComPtr<ID3D11RasterizerState> volumeRS;
 
-	// Light volume geometry (shared sphere)
+	// Light volume geometry
 	ComPtr<ID3D11Buffer> sphereVertexBuffer;
 	ComPtr<ID3D11Buffer> sphereIndexBuffer;
 	UINT sphereIndexCount = 0;
+
+	ComPtr<ID3D11Buffer> coneVertexBuffer;
+	ComPtr<ID3D11Buffer> coneIndexBuffer;
+	UINT coneIndexCount = 0;
 
 	bool initialized = false;
 };

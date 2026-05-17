@@ -6,6 +6,7 @@
 #include "GameContext.hpp"
 #include "PointLight.hpp"
 #include "ShaderManager.hpp"
+#include "SpotLight.hpp"
 
 LightManager::LightManager()
 {
@@ -48,7 +49,6 @@ void LightManager::RegisterPointLight(std::shared_ptr<PointLight> light)
 		return;
 	}
 
-	// Проверяем, нет ли уже такого света
 	for (auto& entry : activeLights) {
 		if (auto existing = entry.component.lock()) {
 			if (existing.get() == light.get()) {
@@ -79,9 +79,45 @@ void LightManager::UnregisterPointLight(const PointLight* light)
 	);
 }
 
+void LightManager::RegisterSpotLight(std::shared_ptr<SpotLight> light)
+{
+	if (!light) {
+		return;
+	}
+
+	for (auto& entry : activeSpotLights) {
+		if (auto existing = entry.component.lock()) {
+			if (existing.get() == light.get()) {
+				return;
+			}
+		}
+	}
+
+	activeSpotLights.push_back({light, 0.0f});
+}
+
+void LightManager::UnregisterSpotLight(const SpotLight* light)
+{
+	if (!light) {
+		return;
+	}
+
+	activeSpotLights.erase(
+		std::remove_if(
+			activeSpotLights.begin(),
+			activeSpotLights.end(),
+			[light](const SpotLightEntry& entry) {
+				auto ptr = entry.component.lock();
+				return !ptr || ptr.get() == light;
+			}
+		),
+		activeSpotLights.end()
+	);
+}
+
 void LightManager::PrepareLights(PerFrameConstants& constants, const Vector3& cameraPosition)
 {
-	// Очищаем expired указатели и собираем валидные данные
+	// Point lights
 	cachedLights.clear();
 
 	for (auto it = activeLights.begin(); it != activeLights.end();) {
@@ -98,7 +134,6 @@ void LightManager::PrepareLights(PerFrameConstants& constants, const Vector3& ca
 		++it;
 	}
 
-	// Сортируем по расстоянию до камеры (ближайшие первыми)
 	std::sort(
 		cachedLights.begin(),
 		cachedLights.end(),
@@ -109,7 +144,6 @@ void LightManager::PrepareLights(PerFrameConstants& constants, const Vector3& ca
 		}
 	);
 
-	// Заполняем константный буфер (максимум MAX_POINT_LIGHTS)
 	int count = static_cast<int>(std::min<size_t>(cachedLights.size(), MAX_POINT_LIGHTS));
 	constants.pointLightCount = count;
 
@@ -117,10 +151,36 @@ void LightManager::PrepareLights(PerFrameConstants& constants, const Vector3& ca
 		constants.pointLights[i] = cachedLights[i];
 	}
 
-	// Обнуляем оставшиеся слоты (чтобы не было мусора из прошлого кадра)
 	for (int i = count; i < MAX_POINT_LIGHTS; ++i) {
 		constants.pointLights[i] = LightData::PointLight{};
 	}
+
+	// Spot lights
+	cachedSpotLights.clear();
+
+	for (auto it = activeSpotLights.begin(); it != activeSpotLights.end();) {
+		auto light = it->component.lock();
+		if (!light || !light->lightEnabled) {
+			it = activeSpotLights.erase(it);
+			continue;
+		}
+
+		auto data = light->GetLightData();
+		it->distanceToCamera = Vector3::DistanceSquared(data.position, cameraPosition);
+
+		cachedSpotLights.push_back(data);
+		++it;
+	}
+
+	std::sort(
+		cachedSpotLights.begin(),
+		cachedSpotLights.end(),
+		[&cameraPosition](const LightData::SpotLight& a, const LightData::SpotLight& b) {
+			float distA = Vector3::DistanceSquared(a.position, cameraPosition);
+			float distB = Vector3::DistanceSquared(b.position, cameraPosition);
+			return distA < distB;
+		}
+	);
 }
 
 std::vector<Matrix> LightManager::CalculateCascadeMatrices(
@@ -135,7 +195,6 @@ std::vector<Matrix> LightManager::CalculateCascadeMatrices(
 		float splitNear = prevSplit;
 		float splitFar = nearPlane + (farPlane - nearPlane) * split;
 
-		// 1. Строим суб-фрустум для текущего каскада
 		Matrix subProj = Matrix::CreatePerspectiveFieldOfView(fovRadians, aspect, splitNear, splitFar);
 		Matrix invSub = (cameraView * subProj).Invert();
 
@@ -143,25 +202,21 @@ std::vector<Matrix> LightManager::CalculateCascadeMatrices(
 		for (int j = 0; j < 8; ++j) {
 			float x = (j & 1) ? 1.0f : -1.0f;
 			float y = (j & 2) ? 1.0f : -1.0f;
-			float z = (j & 4) ? 1.0f : 0.0f;  // 0 = near, 1 = far в NDC
+			float z = (j & 4) ? 1.0f : 0.0f;
 
 			Vector4 worldPos = Vector4::Transform(Vector4(x, y, z, 1.0f), invSub);
 			frustumCorners[j] = Vector3(worldPos.x / worldPos.w, worldPos.y / worldPos.w, worldPos.z / worldPos.w);
 		}
 
-		// 2. Центр фрустума (для позиции источника света)
 		Vector3 center = Vector3::Zero;
 		for (int j = 0; j < 8; ++j) {
 			center += frustumCorners[j];
 		}
 		center /= 8.0f;
 
-		// 3. === AABB ПОДХОД ===
-		// Строим временную матрицу вида света (look at center from light direction)
-		Vector3 lightPos = center - lightDir * 100.0f;	// Временная позиция, далеко от центра
+		Vector3 lightPos = center - lightDir * 100.0f;
 		Matrix tempLightView = Matrix::CreateLookAt(lightPos, center, Vector3::Up);
 
-		// Трансформируем все углы фрустума в пространство света
 		float minX = FLT_MAX, maxX = -FLT_MAX;
 		float minY = FLT_MAX, maxY = -FLT_MAX;
 		float minZ = FLT_MAX, maxZ = -FLT_MAX;
@@ -176,12 +231,10 @@ std::vector<Matrix> LightManager::CalculateCascadeMatrices(
 			maxZ = std::max(maxZ, ls.z);
 		}
 
-		// 4. Делаем проекцию КВАДРАТНОЙ (берём максимум из ширины/высоты)
 		float width = maxX - minX;
 		float height = maxY - minY;
 		float maxSize = std::max(width, height);
 
-		// 5. Texel snapping (критично для стабильности теней!)
 		float texelSize = maxSize / SHADOW_MAP_SIZE;
 
 		Vector3 centerLightSpace;
@@ -189,28 +242,21 @@ std::vector<Matrix> LightManager::CalculateCascadeMatrices(
 		centerLightSpace.y = (minY + maxY) * 0.5f;
 		centerLightSpace.z = (minZ + maxZ) * 0.5f;
 
-		// Снаппим центр к сетке texel'ов
 		centerLightSpace.x = std::floor(centerLightSpace.x / texelSize) * texelSize;
 		centerLightSpace.y = std::floor(centerLightSpace.y / texelSize) * texelSize;
 
-		// Пересчитываем bounds с учётом снаппинга
 		minX = centerLightSpace.x - maxSize * 0.5f;
 		maxX = centerLightSpace.x + maxSize * 0.5f;
 		minY = centerLightSpace.y - maxSize * 0.5f;
 		maxY = centerLightSpace.y + maxSize * 0.5f;
 
-		// 6. Финальная матрица вида света (из снаппленного центра)
 		Vector3 finalCenter = Vector3::Transform(centerLightSpace, tempLightView.Invert());
 		Vector3 finalLightPos = finalCenter - lightDir * std::max(maxZ - minZ, maxSize);
 
 		Matrix lightView = Matrix::CreateLookAt(finalLightPos, finalCenter, Vector3::Up);
 
-		// 7. Orthographic off-center проекция (оптимально использует texel'ы)
-		Matrix lightProj = Matrix::CreateOrthographicOffCenter(
-			minX, maxX, minY, maxY, 0.0f, maxZ - minZ + maxSize	 // near/far с запасом
-		);
+		Matrix lightProj = Matrix::CreateOrthographicOffCenter(minX, maxX, minY, maxY, 0.0f, maxZ - minZ + maxSize);
 
-		// 8. Сохраняем матрицу
 		matrices.push_back(lightView * lightProj);
 		shadowConstants.cascades[i].viewProj = matrices.back().Transpose();
 		shadowConstants.cascades[i].splitDistance = splitFar;

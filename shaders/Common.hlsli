@@ -16,6 +16,22 @@ struct PointLight {
     float pad0;
 };
 
+struct SpotLight {
+    float3 position;
+    float intensity;
+
+    float3 color;
+    float range;
+
+    float3 direction;
+    float innerAngle;
+
+    float outerAngle;
+    float constant;
+    float linearAttenuation;
+    float quadratic;
+};
+
 struct Material {
     float3 ambient;
     float pad0;
