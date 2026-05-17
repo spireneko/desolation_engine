@@ -100,7 +100,7 @@ float4 main(PS_INPUT input) : SV_TARGET {
 
     // Blinn-Phong with roughness
     float specPower = exp2(10 * (1.0 - roughness) + 1);
-    float spec = pow(NdotH, specPower) * (metallic > 0.5 ? 1.0 : 0.0);
+    float spec = pow(NdotH, specPower) * metallic;
 
     float viewDepth = length(worldPos - cameraPosition);
     float shadow = CalculateShadow(worldPos, normal, viewDepth, shadowData, dirLight.direction);

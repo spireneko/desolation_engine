@@ -16,7 +16,7 @@ cbuffer SpotLightConstants : register(b0) {
     float pad2;
 
     matrix worldViewProj;
-    
+
     float2 screenSize;
     float2 pad3;
 };
@@ -75,7 +75,7 @@ float4 main(PS_INPUT input) : SV_TARGET {
     float NdotH = max(dot(normal, halfDir), 0.0);
 
     float specPower = exp2(10 * (1.0 - roughness) + 1);
-    float spec = pow(NdotH, specPower) * (metallic > 0.5 ? 1.0 : 0.0);
+    float spec = pow(NdotH, specPower) * metallic;
 
     float3 diffuse = albedo * NdotL * spotLight.color;
     float3 specular = spotLight.color * spec * metallic;

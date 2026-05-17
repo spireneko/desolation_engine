@@ -37,7 +37,7 @@ GBufferOutput main(PS_INPUT input) {
     float4 texColor = diffuseTexture.Sample(samplerState, input.uv);
     float3 albedo = texColor.rgb * input.color.rgb;
 
-    float metallic = length(material.specular) > 0.5 ? 0.8 : 0.0;
+    float metallic = saturate(length(material.specular));
     float roughness = saturate(1.0 - (material.shininess / 256.0));
 
     float3 emissive = material.ambient * 0.5;
