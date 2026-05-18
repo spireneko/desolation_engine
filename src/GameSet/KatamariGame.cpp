@@ -200,6 +200,19 @@ std::pair<std::vector<std::shared_ptr<GameComponent>>, std::shared_ptr<OrbitalCa
 		stickables.push_back(sword);
 	}
 
+	LightData::PointLight lightData;
+	lightData.position = Vector3::Zero;
+	lightData.intensity = 3.0f;
+	lightData.color = Vector3(1.0f, 0.7f, 0.3f);
+	lightData.range = 15.0f;
+	lightData.constant = 1.0f;
+	lightData.linear = 0.14f;
+	lightData.quadratic = 0.07f;
+
+	auto pointLight = PointLight::Create(ctx, lightData);
+	pointLight->position = Vector3(0.0f, 2.0f, 5.0f);
+	components.push_back(pointLight);
+
 	LightData::SpotLight spotLightData;
 	spotLightData.intensity = 3.0f;
 	spotLightData.color = Vector3(1.0f, 0.7f, 0.3f);
