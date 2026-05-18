@@ -275,10 +275,13 @@ void RenderingSystem::ExecuteDeferredLighting(CameraComponent* camera, LightMana
 
 	Matrix view = camera->GetViewMatrix();
 	Matrix proj = camera->GetProjectionMatrix();
+	litConstants.invProj = proj.Invert().Transpose();
 	litConstants.invViewProj = (view * proj).Invert().Transpose();
 	litConstants.shadowData = lightManager->GetShadowConstants();
 	litConstants.screenSize =
 		Vector2(static_cast<float>(gBuffer->GetWidth()), static_cast<float>(gBuffer->GetHeight()));
+	// litConstants.debugCascades = lightManager->GetDebugShadowCascades() ? 1 : 0;
+	litConstants.debugCascades = 0;
 
 	ctx->OMSetDepthStencilState(lightingDSS.Get(), 0);
 	ctx->OMSetBlendState(nullptr, nullptr, 0xFFFFFFFF);

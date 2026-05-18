@@ -71,6 +71,7 @@ endif()
 include(directxtk)
 include(openmp)
 include(directxtex)
+include(imgui)
 include(tinyobjloader)
 
 # Возвращаемся к оригинальному типу сборки
@@ -84,6 +85,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     ${DIRECTXTK_TARGET}
     ${OPENMP_TARGET}
     ${DIRECTX_TEX_TARGET}
+    ${IMGUI_TARGET}
     ${TINYOBJLOADER_TARGET}
     ${SLANG_TARGET}
 )

@@ -46,6 +46,10 @@ class LightManager {
 	void BindShadowMap(ID3D11DeviceContext* ctx, int slot);
 	LightData::ShadowConstants GetShadowConstants() const;
 
+	bool GetDebugShadowCascades() const { return debugShadowCascades; }
+
+	void SetDebugShadowCascades(bool enabled) { debugShadowCascades = enabled; }
+
 	size_t GetActiveLightCount() const { return activeLights.size(); }
 
 	size_t GetActiveSpotLightCount() const { return activeSpotLights.size(); }
@@ -76,6 +80,8 @@ class LightManager {
 	std::unique_ptr<ShadowMap> shadowMap;
 	LightData::ShadowConstants shadowConstants;
 	std::vector<float> cascadeSplits;
+
+	bool debugShadowCascades = false;
 
 	std::vector<Matrix> CalculateCascadeMatrices(
 		const Vector3& lightDir, const Matrix& cameraView, float fovRadians, float aspect, float nearPlane,

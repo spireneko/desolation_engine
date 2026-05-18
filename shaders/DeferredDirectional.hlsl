@@ -12,16 +12,30 @@ SamplerComparisonState shadowSampler : register(s1);
 cbuffer LightingConstants : register(b0) {
     float3 cameraPosition;
     int cascadeCount;
+
     DirectionalLight dirLight;
+
+    matrix invProj;
+
     matrix invViewProj;
+
     ShadowConstants shadowData;
+
     float2 screenSize;
-    float2 pad;
+    int debugCascades;
+    float pad;
 };
 
 struct PS_INPUT {
     float4 pos : SV_POSITION;
     float2 uv : TEXCOORD;
+};
+
+static const float3 cascadeDebugColors[4] = {
+    float3(1.0, 0.0, 0.0),
+    float3(0.0, 1.0, 0.0),
+    float3(0.0, 0.0, 1.0),
+    float3(1.0, 0.0, 1.0)
 };
 
 int GetCascadeIndex(float viewDepth, ShadowConstants shadow) {
@@ -51,10 +65,10 @@ float SampleShadowPCF(float3 shadowCoord, int cascadeIndex, ShadowConstants shad
     return result / 9.0;
 }
 
-float CalculateShadow(float3 worldPos, float3 normal, float viewDepth, ShadowConstants shadow, float3 lightDir) {
-    int cascadeIndex = GetCascadeIndex(viewDepth, shadow);
+float CalculateShadowWithIndex(float3 worldPos, float3 normal, float viewDepth, ShadowConstants shadow, float3 lightDir, out int outCascadeIndex) {
+    outCascadeIndex = GetCascadeIndex(viewDepth, shadow);
 
-    float4 shadowCoord = mul(float4(worldPos, 1.0), shadow.cascades[cascadeIndex].viewProj);
+    float4 shadowCoord = mul(float4(worldPos, 1.0), shadow.cascades[outCascadeIndex].viewProj);
     shadowCoord.xyz /= shadowCoord.w;
 
     float2 shadowUV = shadowCoord.xy * 0.5 + 0.5;
@@ -66,14 +80,23 @@ float CalculateShadow(float3 worldPos, float3 normal, float viewDepth, ShadowCon
         return 1.0;
     }
 
-    return SampleShadowPCF(float3(shadowUV, shadowCoord.z), cascadeIndex, shadow, bias);
+    return SampleShadowPCF(float3(shadowUV, shadowCoord.z), outCascadeIndex, shadow, bias);
 }
 
 float3 ReconstructWorldPosition(float2 uv, float depth, matrix invViewProj) {
     float4 ndc = float4(uv * 2.0 - 1.0, depth, 1.0);
     ndc.y = -ndc.y;
     float4 worldPos = mul(ndc, invViewProj);
+
     return worldPos.xyz / worldPos.w;
+}
+
+float ReconstructViewDepth(float2 uv, float depth, matrix invProj) {
+    float4 clipPos = float4(uv * 2.0 - 1.0, depth, 1.0);
+    clipPos.y = -clipPos.y;
+    float4 viewPos = mul(clipPos, invProj);
+
+    return -viewPos.z / viewPos.w;
 }
 
 float4 main(PS_INPUT input) : SV_TARGET {
@@ -102,13 +125,20 @@ float4 main(PS_INPUT input) : SV_TARGET {
     float specPower = exp2(10 * (1.0 - roughness) + 1);
     float spec = pow(NdotH, specPower) * metallic;
 
-    float viewDepth = length(worldPos - cameraPosition);
-    float shadow = CalculateShadow(worldPos, normal, viewDepth, shadowData, dirLight.direction);
+    float viewDepth = ReconstructViewDepth(input.uv, depth, invProj);
+
+    int cascadeIndex = 0;
+    float shadow = CalculateShadowWithIndex(worldPos, normal, viewDepth, shadowData, dirLight.direction, cascadeIndex);
 
     float3 diffuse = albedo * NdotL * dirLight.color;
     float3 specular = dirLight.color * spec * metallic;
 
     float3 lighting = (diffuse + specular) * dirLight.intensity * shadow;
+
+    if (debugCascades != 0) {
+        float3 debugColor = cascadeDebugColors[cascadeIndex];
+        lighting += debugColor * 0.3;
+    }
 
     // Add emissive
     lighting += emissive;

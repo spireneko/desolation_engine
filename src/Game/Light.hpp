@@ -64,11 +64,18 @@ struct ShadowConstants {
 struct LightingConstants {
 	Vector3 cameraPosition;
 	int cascadeCount;
+
 	LightData::DirectionalLight dirLight;
+
+	Matrix invProj;
+
 	Matrix invViewProj;
+
 	LightData::ShadowConstants shadowData;
+
 	Vector2 screenSize;
-	Vector2 pad;
+	int debugCascades;
+	float pad;
 };
 
 struct PointLightConstants {

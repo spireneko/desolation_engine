@@ -1,7 +1,14 @@
 {
   "dependencies": [
-    "directxtk",
     "directxtex",
-    "tinyobjloader"
+    "directxtk",
+    "tinyobjloader",
+    {
+      "name": "imgui",
+      "features": [
+        "sdl3-binding",
+        "dx11-binding"
+      ]
+    }
   ]
 }
