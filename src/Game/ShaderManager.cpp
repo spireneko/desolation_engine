@@ -1,5 +1,7 @@
 #include "ShaderManager.hpp"
 
+#include "Particle.hpp"
+
 ShaderManager::ShaderManager(GameContext* ctx) : gameContext(ctx)
 {
 	ID3D11Device* device = gameContext->GetGraphicsDevice();
@@ -65,6 +67,9 @@ ShaderManager::ShaderManager(GameContext* ctx) : gameContext(ctx)
 		spotLayout,
 		1
 	);
+
+	// Particle pass (instanced, no input layout needed)
+	CreatePass(PassType::Particle, L"shaders/ParticleVS.hlsl", L"shaders/ParticlePS.hlsl", sizeof(ParticleConstants));
 
 	// Samplers
 	D3D11_SAMPLER_DESC samplerDesc = {};

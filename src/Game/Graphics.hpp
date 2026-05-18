@@ -22,6 +22,10 @@ class Graphics {
 
 	ID3D11DeviceContext* GetContext() const { return context.Get(); }
 
+	ID3D11Texture2D* GetDepthStencilBuffer() const { return depthStencilBuffer.Get(); }
+
+	ID3D11RenderTargetView* GetRenderTargetView() const { return renderTargetView.Get(); }
+
 	int GetWidth() const { return width; }
 
 	int GetHeight() const { return height; }

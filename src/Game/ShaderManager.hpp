@@ -25,7 +25,8 @@ class ShaderManager {
 		DeferredDirectional,  // Full-screen directional
 		DeferredPoint,		  // Point light volume
 		DeferredSpot,		  // Spot light volume
-		Forward				  // Transparent/forward fallback
+		Forward,			  // Transparent/forward fallback
+		Particle			  // Particle rendering
 	};
 
 	ShaderManager(GameContext* ctx);

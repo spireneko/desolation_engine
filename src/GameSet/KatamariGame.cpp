@@ -2,6 +2,7 @@
 
 #include "Game/KatamariBallComponent.hpp"
 #include "Game/Mesh.hpp"
+#include "Game/ParticleEmitterComponent.hpp"
 #include "Game/PointLight.hpp"
 #include "Game/SpotLight.hpp"
 #include "Game/Texture.hpp"
@@ -199,6 +200,29 @@ std::pair<std::vector<std::shared_ptr<GameComponent>>, std::shared_ptr<OrbitalCa
 		components.push_back(sword);
 		stickables.push_back(sword);
 	}
+
+	// Spark emitter for sword
+	auto sparkTexture = Texture::CreateWhite(ctx);
+	auto sparkEmitter = std::make_shared<ParticleEmitterComponent>(ctx);
+	EmitterSettings sparkSettings;
+	sparkSettings.maxParticles = 200;
+	sparkSettings.emissionRate = 50;  // manual burst
+	sparkSettings.lifetimeMin = 0.4f;
+	sparkSettings.lifetimeMax = 0.7f;
+	sparkSettings.velocityMin = Vector3(-5, 2, -5);
+	sparkSettings.velocityMax = Vector3(5, 8, 5);
+	sparkSettings.startSize = 0.1f;
+	sparkSettings.endSize = 0.0f;
+	sparkSettings.startColor = Colors::Yellow;
+	sparkSettings.endColor = Colors::Red;
+	sparkSettings.startAlpha = 1.0f;
+	sparkSettings.endAlpha = 0.0f;
+	sparkSettings.gravity = Vector3(0, -15.0f, 0);
+	sparkSettings.blendMode = BlendMode::Additive;
+	sparkSettings.texture = sparkTexture;
+
+	sparkEmitter->SetSettings(sparkSettings);
+	sword->AddChild(sparkEmitter);
 
 	LightData::PointLight lightData;
 	lightData.position = Vector3::Zero;

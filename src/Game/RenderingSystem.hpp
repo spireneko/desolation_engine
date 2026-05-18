@@ -13,6 +13,8 @@
 #include "LightManager.hpp"
 #include "ShaderManager.hpp"
 
+class ParticleEmitterComponent;
+
 using namespace DirectX::SimpleMath;
 
 class RenderingSystem {
@@ -58,6 +60,15 @@ class RenderingSystem {
 	void DrawLightVolume(ID3D11DeviceContext* ctx);
 	void DrawConeVolume(ID3D11DeviceContext* ctx);
 
+	void ExecuteForwardPass(
+		const std::vector<std::shared_ptr<GameComponent>>& sceneRoots, const Matrix& view, const Matrix& proj,
+		const Vector3& cameraPos
+	);
+
+	void RenderParticleEmitters(
+		const std::vector<std::shared_ptr<ParticleEmitterComponent>>& emitters, const Matrix& view, const Matrix& proj
+	);
+
 	GameContext* gameContext;
 	std::unique_ptr<GBuffer> gBuffer;
 	std::unique_ptr<FullscreenQuad> fsQuad;
@@ -75,6 +86,30 @@ class RenderingSystem {
 	ComPtr<ID3D11Buffer> coneVertexBuffer;
 	ComPtr<ID3D11Buffer> coneIndexBuffer;
 	UINT coneIndexCount = 0;
+
+	// GPU resources for particles
+	struct ParticleGPUData {
+		ComPtr<ID3D11Buffer> particleStructuredBuffer;
+		ComPtr<ID3D11ShaderResourceView> particleSRV;
+		ComPtr<ID3D11BlendState> additiveBlendState;
+		ComPtr<ID3D11BlendState> alphaBlendState;
+		ComPtr<ID3D11DepthStencilState> particleDepthState;
+		size_t currentBufferSize = 0;
+	};
+
+	struct ParticleRenderData {
+		Vector3 position;
+		float size;
+		Vector4 color;
+		float rotation;
+		float pad[3];
+	};
+
+	ParticleGPUData particleGPU;
+
+	std::vector<std::shared_ptr<ParticleEmitterComponent>> CollectParticleEmitters(
+		const std::vector<std::shared_ptr<GameComponent>>& roots
+	);
 
 	bool initialized = false;
 };

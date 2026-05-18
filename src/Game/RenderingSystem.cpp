@@ -3,6 +3,7 @@
 #include <deque>
 
 #include "Mesh.hpp"
+#include "ParticleEmitterComponent.hpp"
 
 RenderingSystem::RenderingSystem(GameContext* ctx) : gameContext(ctx) {}
 
@@ -137,6 +138,36 @@ bool RenderingSystem::Initialize(int width, int height)
 	rsDesc.DepthClipEnable = TRUE;
 	device->CreateRasterizerState(&rsDesc, &volumeRS);
 
+	// Particle blend states
+	D3D11_BLEND_DESC additiveDesc = {};
+	additiveDesc.RenderTarget[0].BlendEnable = TRUE;
+	additiveDesc.RenderTarget[0].SrcBlend = D3D11_BLEND_ONE;
+	additiveDesc.RenderTarget[0].DestBlend = D3D11_BLEND_ONE;
+	additiveDesc.RenderTarget[0].BlendOp = D3D11_BLEND_OP_ADD;
+	additiveDesc.RenderTarget[0].SrcBlendAlpha = D3D11_BLEND_ONE;
+	additiveDesc.RenderTarget[0].DestBlendAlpha = D3D11_BLEND_ONE;
+	additiveDesc.RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_ADD;
+	additiveDesc.RenderTarget[0].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
+	device->CreateBlendState(&additiveDesc, &particleGPU.additiveBlendState);
+
+	D3D11_BLEND_DESC alphaDesc = {};
+	alphaDesc.RenderTarget[0].BlendEnable = TRUE;
+	alphaDesc.RenderTarget[0].SrcBlend = D3D11_BLEND_SRC_ALPHA;
+	alphaDesc.RenderTarget[0].DestBlend = D3D11_BLEND_INV_SRC_ALPHA;
+	alphaDesc.RenderTarget[0].BlendOp = D3D11_BLEND_OP_ADD;
+	alphaDesc.RenderTarget[0].SrcBlendAlpha = D3D11_BLEND_ONE;
+	alphaDesc.RenderTarget[0].DestBlendAlpha = D3D11_BLEND_INV_SRC_ALPHA;
+	alphaDesc.RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_ADD;
+	alphaDesc.RenderTarget[0].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
+	device->CreateBlendState(&alphaDesc, &particleGPU.alphaBlendState);
+
+	D3D11_DEPTH_STENCIL_DESC particleDepthDesc = {};
+	particleDepthDesc.DepthEnable = TRUE;
+	particleDepthDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ZERO;
+	particleDepthDesc.DepthFunc = D3D11_COMPARISON_LESS_EQUAL;
+	particleDepthDesc.StencilEnable = FALSE;
+	device->CreateDepthStencilState(&particleDepthDesc, &particleGPU.particleDepthState);
+
 	initialized = true;
 	return true;
 }
@@ -196,7 +227,7 @@ void RenderingSystem::RenderFrame(
 	ExecuteDeferredLighting(camera, lightManager);
 
 	// 4. Forward pass for transparent objects (if any)
-	// ExecuteForwardPass(transparentObjects, view, proj);
+	ExecuteForwardPass(sceneRoots, view, proj, cameraPos);
 }
 
 void RenderingSystem::ExecuteShadowPass(
@@ -487,4 +518,167 @@ void RenderingSystem::DrawConeVolume(ID3D11DeviceContext* ctx)
 	ctx->IASetIndexBuffer(coneIndexBuffer.Get(), DXGI_FORMAT_R32_UINT, 0);
 	ctx->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	ctx->DrawIndexed(coneIndexCount, 0, 0);
+}
+
+void RenderingSystem::ExecuteForwardPass(
+	const std::vector<std::shared_ptr<GameComponent>>& sceneRoots, const Matrix& view, const Matrix& proj,
+	const Vector3& cameraPos
+)
+{
+	auto ctx = gameContext->GetGraphicsContext();
+	auto graphics = gameContext->GetGraphics();
+
+	ctx->CopyResource(graphics->GetDepthStencilBuffer(), gBuffer->GetDepthTexture());
+
+	auto emitters = CollectParticleEmitters(sceneRoots);
+	if (emitters.empty()) {
+		return;
+	}
+
+	// Sort emitters back-to-front
+	std::sort(emitters.begin(), emitters.end(), [&cameraPos](const auto& a, const auto& b) {
+		float distA = Vector3::DistanceSquared(a->position, cameraPos);
+		float distB = Vector3::DistanceSquared(b->position, cameraPos);
+		return distA > distB;  // back to front
+	});
+
+	RenderParticleEmitters(emitters, view, proj);
+}
+
+std::vector<std::shared_ptr<ParticleEmitterComponent>> RenderingSystem::CollectParticleEmitters(
+	const std::vector<std::shared_ptr<GameComponent>>& roots
+)
+{
+	std::vector<std::shared_ptr<ParticleEmitterComponent>> result;
+	std::deque<std::shared_ptr<GameComponent>> queue;
+
+	for (auto& r : roots) {
+		queue.push_back(r);
+	}
+
+	while (!queue.empty()) {
+		auto current = queue.front();
+		queue.pop_front();
+
+		if (auto emitter = std::dynamic_pointer_cast<ParticleEmitterComponent>(current)) {
+			if (emitter->IsPlaying() && emitter->GetActiveParticleCount() > 0) {
+				result.push_back(emitter);
+			}
+		}
+
+		for (auto& child : current->GetChildren()) {
+			queue.push_back(child);
+		}
+	}
+	return result;
+}
+
+void RenderingSystem::RenderParticleEmitters(
+	const std::vector<std::shared_ptr<ParticleEmitterComponent>>& emitters, const Matrix& view, const Matrix& proj
+)
+{
+	auto ctx = gameContext->GetGraphicsContext();
+	auto shaders = gameContext->GetShaderManager();
+	auto device = gameContext->GetGraphicsDevice();	 // <-- ИСПРАВЛЕНИЕ: получаем device
+
+	shaders->Apply(ShaderManager::PassType::Particle);
+
+	// Extract camera vectors for billboarding
+	Matrix invView = view.Invert();
+	Vector3 cameraRight(invView._11, invView._12, invView._13);
+	Vector3 cameraUp(invView._21, invView._22, invView._23);
+
+	struct ParticleConstants {
+		Matrix viewProj;
+		Vector3 cameraRight;
+		float pad0;
+		Vector3 cameraUp;
+		float pad1;
+		Vector2 screenSize;
+		float pad2[2];
+	} constants;
+
+	constants.viewProj = (view * proj).Transpose();
+	constants.cameraRight = cameraRight;
+	constants.cameraUp = cameraUp;
+	constants.screenSize = Vector2(static_cast<float>(gBuffer->GetWidth()), static_cast<float>(gBuffer->GetHeight()));
+
+	shaders->UpdateConstants(ShaderManager::PassType::Particle, &constants, sizeof(constants));
+
+	// Bind GBuffer depth as SRV for soft particles
+	ID3D11ShaderResourceView* depthSRV = gBuffer->GetSRV(GBuffer::Attachment::Depth);
+	ctx->PSSetShaderResources(1, 1, &depthSRV);
+
+	ctx->OMSetDepthStencilState(particleGPU.particleDepthState.Get(), 0);
+
+	for (const auto& emitter : emitters) {
+		const auto& particles = emitter->GetParticles();
+		size_t count = particles.size();
+		if (count == 0) {
+			continue;
+		}
+
+		// Ensure buffer size
+		size_t neededSize = count * sizeof(ParticleRenderData);
+		if (particleGPU.currentBufferSize < neededSize) {
+			D3D11_BUFFER_DESC desc = {};
+			desc.ByteWidth = static_cast<UINT>(neededSize);
+			desc.Usage = D3D11_USAGE_DYNAMIC;
+			desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+			desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+			desc.MiscFlags = D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
+			desc.StructureByteStride = sizeof(ParticleRenderData);
+
+			device->CreateBuffer(&desc, nullptr, &particleGPU.particleStructuredBuffer);
+
+			D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+			srvDesc.Format = DXGI_FORMAT_UNKNOWN;
+			srvDesc.ViewDimension = D3D11_SRV_DIMENSION_BUFFER;
+			srvDesc.Buffer.NumElements = static_cast<UINT>(count);
+			device->CreateShaderResourceView(
+				particleGPU.particleStructuredBuffer.Get(), &srvDesc, &particleGPU.particleSRV
+			);
+
+			particleGPU.currentBufferSize = neededSize;
+		}
+
+		// Update buffer
+		D3D11_MAPPED_SUBRESOURCE mapped;
+		if (SUCCEEDED(ctx->Map(particleGPU.particleStructuredBuffer.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped))) {
+			auto* data = reinterpret_cast<ParticleRenderData*>(mapped.pData);
+			for (size_t i = 0; i < count; ++i) {
+				const auto& p = particles[i];
+				float t = 1.0f - (p.lifetime / p.maxLifetime);
+				data[i].position = p.position;
+				data[i].size = p.startSize + (p.endSize - p.startSize) * t;
+				data[i].color = Vector4::Lerp(p.startColor, p.endColor, t);
+				data[i].rotation = p.rotation;
+			}
+			ctx->Unmap(particleGPU.particleStructuredBuffer.Get(), 0);
+		}
+
+		// Set blend state
+		if (emitter->GetBlendMode() == BlendMode::Additive) {
+			ctx->OMSetBlendState(particleGPU.additiveBlendState.Get(), nullptr, 0xFFFFFFFF);
+		} else {
+			ctx->OMSetBlendState(particleGPU.alphaBlendState.Get(), nullptr, 0xFFFFFFFF);
+		}
+
+		// Bind texture
+		auto texture = emitter->GetTexture();
+		ID3D11ShaderResourceView* texSRV = texture ? texture->GetView() : nullptr;
+		ctx->PSSetShaderResources(0, 1, &texSRV);
+		ctx->VSSetShaderResources(0, 1, particleGPU.particleSRV.GetAddressOf());
+
+		// Draw instanced quad (4 vertices per particle)
+		ctx->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+		ctx->DrawInstanced(4, static_cast<UINT>(count), 0, 0);
+	}
+
+	// Cleanup
+	ID3D11ShaderResourceView* nullSRVs[2] = {nullptr, nullptr};
+	ctx->VSSetShaderResources(0, 2, nullSRVs);
+	ctx->PSSetShaderResources(0, 2, nullSRVs);
+	ctx->OMSetBlendState(nullptr, nullptr, 0xFFFFFFFF);
+	ctx->OMSetDepthStencilState(nullptr, 0);
 }

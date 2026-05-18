@@ -31,6 +31,8 @@ class GBuffer {
 	ID3D11DepthStencilView* GetDSV() const;
 	ID3D11DepthStencilView* GetReadOnlyDSV() const;
 
+	ID3D11Texture2D* GetDepthTexture() const { return depthTexture.Get(); }
+
 	int GetWidth() const { return width; }
 
 	int GetHeight() const { return height; }
