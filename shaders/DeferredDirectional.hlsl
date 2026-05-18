@@ -105,6 +105,8 @@ float4 main(PS_INPUT input) : SV_TARGET {
     float4 emissiveAO = gEmissiveAO.Sample(pointSampler, input.uv);
     float depth = gDepth.Sample(pointSampler, input.uv).r;
 
+    if (depth >= 0.999f) discard;
+
     float3 albedo = albedoMetallic.rgb;
     float metallic = albedoMetallic.a;
     float3 normal = normalize(normalRoughness.rgb * 2.0 - 1.0);
